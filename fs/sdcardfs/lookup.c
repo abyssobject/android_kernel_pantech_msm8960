@@ -218,7 +218,7 @@ out:
  * Fills in lower_parent_path with <dentry,mnt> on success.
  */
 static struct dentry *__sdcardfs_lookup(struct dentry *dentry,
-		struct nameidata *nd, struct path *lower_parent_path, userid_t id)
+		unsigned int flags, struct path *lower_parent_path, userid_t id)
 {
 	int err = 0;
 	struct vfsmount *lower_dir_mnt;
@@ -333,10 +333,7 @@ setup_lower:
 	 * the VFS will continue the process of making this negative dentry
 	 * into a positive one.
 	 */
-	if (nd) {
-		if (nd->flags & (LOOKUP_CREATE|LOOKUP_RENAME_TARGET))
-			err = 0;
-	} else
+	if (flags & (LOOKUP_CREATE|LOOKUP_RENAME_TARGET))
 		err = 0;
 
 out:
@@ -355,7 +352,7 @@ out:
  * @nd : nameidata of parent inode
  */
 struct dentry *sdcardfs_lookup(struct inode *dir, struct dentry *dentry,
-			     struct nameidata *nd)
+			     unsigned int flags)
 {
 	struct dentry *ret = NULL, *parent;
 	struct path lower_parent_path;
@@ -384,7 +381,7 @@ struct dentry *sdcardfs_lookup(struct inode *dir, struct dentry *dentry,
 		goto out;
 	}
 
-	ret = __sdcardfs_lookup(dentry, nd, &lower_parent_path, SDCARDFS_I(dir)->userid);
+	ret = __sdcardfs_lookup(dentry, flags, &lower_parent_path, SDCARDFS_I(dir)->userid);
 	if (IS_ERR(ret))
 	{
 		goto out;
