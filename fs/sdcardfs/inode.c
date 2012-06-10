@@ -50,7 +50,7 @@ void revert_fsids(const struct cred * old_cred)
 }
 
 static int sdcardfs_create(struct inode *dir, struct dentry *dentry,
-			 umode_t mode, struct nameidata *nd)
+			 umode_t mode, bool want_excl)
 {
 	int err = 0;
 	struct dentry *lower_dentry;
@@ -87,7 +87,7 @@ static int sdcardfs_create(struct inode *dir, struct dentry *dentry,
 	copied_fs = copy_fs_struct(current->fs);
 	current->fs = copied_fs;
 	current->fs->umask = 0;
-	err = vfs_create(lower_parent_dentry->d_inode, lower_dentry, mode, nd);
+	err = vfs_create(lower_parent_dentry->d_inode, lower_dentry, mode, want_excl);
 	if (err)
 		goto out;
 
