@@ -1247,7 +1247,15 @@ static struct regulator *reg_lvs7, *reg_l2;
 	
 #if !defined(PANTECH_LCD_RESET_TWICE) // PANTECH_LCD_RESET_TWICE already meet the tL(39ms)
 		msleep(39);
-#endif	
+#endif
+
+		/*
+		 * The panel power-off path asserts the in-cell touch reset.  The
+		 * modern power stack no longer runs the RMI4 late-resume callback,
+		 * so release reset here after the shared rails are stable.
+		 */
+		gpio_direction_output(43, 1);
+		msleep(100);
 	} else {
 		msleep(10);
 		gpio_set_value(43, 0);
@@ -1356,6 +1364,10 @@ int mipi_dsi_force_panel_power(int on)
 		printk(KERN_ERR "[LCD]+%s backlight on !\n", __func__);
 #endif
 		msleep(39);
+
+		/* Match the touch reset asserted by the force power-off path. */
+		gpio_direction_output(43, 1);
+		msleep(100);
 	
 	} else {
 		msleep(10);
