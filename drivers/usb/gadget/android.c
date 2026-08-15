@@ -2698,47 +2698,32 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 				continue;
 
 #ifdef CONFIG_ANDROID_PANTECH_USB_CDFREE
-				if (!strcmp(name, "cdrom")) {
-					err = android_enable_function(dev, conf, "mass_storage");
-					pantech_set_cdrom_enabled(1, 1); // cdrom only
-				} else {
-			is_ffs = 0;
-			strlcpy(aliases, dev->ffs_aliases, sizeof(aliases));
-			a = aliases;
-
-
-			while (a) {
-				char *alias = strsep(&a, ",");
-				if (alias && !strcmp(name, alias)) {
-					is_ffs = 1;
-					break;
-				}
+			if (!strcmp(name, "cdrom")) {
+				err = android_enable_function(dev, conf, "mass_storage");
+				pantech_set_cdrom_enabled(1, 1); // cdrom only
+				if (err)
+					pr_err("android_usb: Cannot enable '%s' (%d)",
+						       name, err);
+				continue;
 			}
-
-			if (is_ffs) {
-				if (ffs_enabled)
-					continue;
-				err = android_enable_function(dev, conf, "ffs");
-				}
-#else
-			is_ffs = 0;
-			strlcpy(aliases, dev->ffs_aliases, sizeof(aliases));
-			a = aliases;
-
-
-			while (a) {
-				char *alias = strsep(&a, ",");
-				if (alias && !strcmp(name, alias)) {
-					is_ffs = 1;
-					break;
-				}
-			}
-
-			if (is_ffs) {
-				if (ffs_enabled)
-					continue;
-				err = android_enable_function(dev, conf, "ffs");
 #endif
+			is_ffs = 0;
+			strlcpy(aliases, dev->ffs_aliases, sizeof(aliases));
+			a = aliases;
+
+
+			while (a) {
+				char *alias = strsep(&a, ",");
+				if (alias && !strcmp(name, alias)) {
+					is_ffs = 1;
+					break;
+				}
+			}
+
+			if (is_ffs) {
+				if (ffs_enabled)
+					continue;
+				err = android_enable_function(dev, conf, "ffs");
 				if (err)
 					pr_err("android_usb: Cannot enable ffs (%d)",
 						err);
