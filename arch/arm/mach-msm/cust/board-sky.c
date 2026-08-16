@@ -106,6 +106,7 @@
 
 struct syna_gpio_data {
 	u16 gpio_number;
+	u16 reset_gpio_number;
 	char* gpio_name;
 };
 
@@ -127,10 +128,28 @@ static int synaptics_touchpad_gpio_setup(void *gpio_data, bool configure)
 			pr_err("%s: Failed to setup attn gpio %d. Code: %d.",
 			       __func__, data->gpio_number, retval);
 			gpio_free(data->gpio_number);
+			return retval;
+		}
+
+		retval = gpio_request(data->reset_gpio_number, "rmi4_reset");
+		if (retval) {
+			pr_err("%s: Failed to get reset gpio %d. Code: %d.",
+			       __func__, data->reset_gpio_number, retval);
+			gpio_free(data->gpio_number);
+			return retval;
+		}
+
+		retval = gpio_direction_output(data->reset_gpio_number, 1);
+		if (retval) {
+			pr_err("%s: Failed to setup reset gpio %d. Code: %d.",
+			       __func__, data->reset_gpio_number, retval);
+			gpio_free(data->reset_gpio_number);
+			gpio_free(data->gpio_number);
+			return retval;
 		}
 	} else {
-		pr_warn("%s: No way to deconfigure gpio %d.",
-		       __func__, data->gpio_number);
+		gpio_free(data->reset_gpio_number);
+		gpio_free(data->gpio_number);
 	}
 
 	return retval;
@@ -138,6 +157,7 @@ static int synaptics_touchpad_gpio_setup(void *gpio_data, bool configure)
 
 static struct syna_gpio_data thinstyk_gpiodata = {
 	.gpio_number = THINSTYK_ATTN,	
+	.reset_gpio_number = 43,
 	.gpio_name = "sdmmc2_clk.gpio_130",
 };
 

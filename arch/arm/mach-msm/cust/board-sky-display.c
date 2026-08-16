@@ -14,6 +14,8 @@
 #include <linux/init.h>
 #include <linux/ioport.h>
 #include <linux/gpio.h>
+#include <linux/interrupt.h>
+#include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/bootmem.h>
 #include <linux/msm_ion.h>
@@ -52,6 +54,40 @@ static bool vci_bootup_set;
 // 20130311 shkwak : Note - msleep always takes 20 ms delay regardless of the parameters
 // PANTECH_LCD_RESET_TWICE feature wrote considering msleep delay .. 
 #define PANTECH_LCD_RESET_TWICE //20130311 shkwak, for stable lcd init, sony request 
+#define EF52_TOUCH_RST_GPIO 43
+#define EF52_TOUCH_INT_GPIO 55
+static DEFINE_MUTEX(ef52_touch_power_lock);
+static bool ef52_touch_irq_disabled;
+
+static void ef52_touch_panel_power(bool on)
+{
+	mutex_lock(&ef52_touch_power_lock);
+
+	if (on) {
+		gpio_set_value(EF52_TOUCH_RST_GPIO, 1);
+		msleep(100);
+
+		if (ef52_touch_irq_disabled) {
+			enable_irq(gpio_to_irq(EF52_TOUCH_INT_GPIO));
+			ef52_touch_irq_disabled = false;
+		}
+	} else {
+		/*
+		 * CM 14.1 disabled ATTN before the panel asserted the shared
+		 * in-cell touch reset.  Android's current blanking path no longer
+		 * invokes that RMI4 early-suspend callback, so serialize the same
+		 * operation with the panel power transition.
+		 */
+		if (!ef52_touch_irq_disabled) {
+			disable_irq(gpio_to_irq(EF52_TOUCH_INT_GPIO));
+			ef52_touch_irq_disabled = true;
+		}
+
+		gpio_set_value(EF52_TOUCH_RST_GPIO, 0);
+	}
+
+	mutex_unlock(&ef52_touch_power_lock);
+}
 #ifdef FEATURE_SKYDISP_BOOT_ANI_SKIP_BUG_FIX
 #define LCD_VCI_EN 28
 static bool mipi_reset_init_skip;  
@@ -1249,18 +1285,10 @@ static struct regulator *reg_lvs7, *reg_l2;
 		msleep(39);
 #endif
 
-		/*
-		 * The panel power-off path asserts the in-cell touch reset.  The
-		 * modern power stack no longer runs the RMI4 late-resume callback,
-		 * so release reset here after the shared rails are stable.
-		 */
-		gpio_direction_output(43, 1);
-		msleep(100);
+		ef52_touch_panel_power(true);
 	} else {
 		msleep(10);
-		gpio_set_value(43, 0);
-		msleep(10);
-		gpio_set_value(55, 0);
+		ef52_touch_panel_power(false);
 		msleep(10);
 
 		msleep(70);
@@ -1365,15 +1393,11 @@ int mipi_dsi_force_panel_power(int on)
 #endif
 		msleep(39);
 
-		/* Match the touch reset asserted by the force power-off path. */
-		gpio_direction_output(43, 1);
-		msleep(100);
+		ef52_touch_panel_power(true);
 	
 	} else {
 		msleep(10);
-		gpio_set_value(43, 0);
-		msleep(10);
-		gpio_set_value(55, 0);
+		ef52_touch_panel_power(false);
 		msleep(10);
 
 		msleep(70);

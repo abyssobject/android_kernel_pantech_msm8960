@@ -415,7 +415,7 @@ static int __devexit rmi_i2c_remove(struct i2c_client *client)
 	kfree(phys);
 
 	if (pd->gpio_config)
-		pd->gpio_config(&pd->gpio_data, false);
+		pd->gpio_config(pd->gpio_data, false);
 
 	return 0;
 }
