@@ -111,13 +111,8 @@ struct inode *sdcardfs_iget(struct super_block *sb, struct inode *lower_inode, u
 		return ERR_PTR(err);
 	}
 	/* if found a cached inode, then just return it */
-	if (!(inode->i_state & I_NEW)) {
-		/* There can only be one alias, as we don't permit hard links
-		 * This ensures we do not keep stale dentries that would later
-		 * cause confusion. */
-		d_prune_aliases(inode);
+	if (!(inode->i_state & I_NEW))
 		return inode;
-	}
 
 	/* initialize new inode */
 	info = SDCARDFS_I(inode);
@@ -218,7 +213,7 @@ out:
  * Fills in lower_parent_path with <dentry,mnt> on success.
  */
 static struct dentry *__sdcardfs_lookup(struct dentry *dentry,
-		unsigned int flags, struct path *lower_parent_path, userid_t id)
+		struct nameidata *nd, struct path *lower_parent_path, userid_t id)
 {
 	int err = 0;
 	struct vfsmount *lower_dir_mnt;
@@ -241,6 +236,7 @@ static struct dentry *__sdcardfs_lookup(struct dentry *dentry,
 	/* now start the actual lookup procedure */
 	lower_dir_dentry = lower_parent_path->dentry;
 	lower_dir_mnt = lower_parent_path->mnt;
+
 	/* Use vfs_path_lookup to check if the dentry exists or not */
 	err = vfs_path_lookup(lower_dir_dentry, lower_dir_mnt, name, 0,
 				&lower_nd.path);
@@ -333,7 +329,10 @@ setup_lower:
 	 * the VFS will continue the process of making this negative dentry
 	 * into a positive one.
 	 */
-	if (flags & (LOOKUP_CREATE|LOOKUP_RENAME_TARGET))
+	if (nd) {
+		if (nd->flags & (LOOKUP_CREATE|LOOKUP_RENAME_TARGET))
+			err = 0;
+	} else
 		err = 0;
 
 out:
@@ -352,7 +351,7 @@ out:
  * @nd : nameidata of parent inode
  */
 struct dentry *sdcardfs_lookup(struct inode *dir, struct dentry *dentry,
-			     unsigned int flags)
+			     struct nameidata *nd)
 {
 	struct dentry *ret = NULL, *parent;
 	struct path lower_parent_path;
@@ -381,7 +380,7 @@ struct dentry *sdcardfs_lookup(struct inode *dir, struct dentry *dentry,
 		goto out;
 	}
 
-	ret = __sdcardfs_lookup(dentry, flags, &lower_parent_path, SDCARDFS_I(dir)->userid);
+	ret = __sdcardfs_lookup(dentry, nd, &lower_parent_path, SDCARDFS_I(dir)->userid);
 	if (IS_ERR(ret))
 	{
 		goto out;
