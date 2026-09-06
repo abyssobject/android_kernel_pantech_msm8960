@@ -484,9 +484,9 @@ otherwise noted.
   	and call mark_inode_dirty_sync.
 
   atomic_open: called on the last component of an open.  Using this optional
-  	method the filesystem can look up, possibly create and open the file in
-  	one atomic operation.  If it cannot perform this (e.g. the file type
-  	turned out to be wrong) it may signal this by returning 1 instead of
+	method the filesystem can look up, possibly create and open the file in
+	one atomic operation.  If it cannot perform this (e.g. the file type
+	turned out to be wrong) it may signal this by returning 1 instead of
 	usual 0 or -ve .  This method is only called if the last component is
 	negative or needs lookup.  Cached positive dentries are still handled by
 	f_op->open().  If the file was created, the FILE_CREATED flag should be

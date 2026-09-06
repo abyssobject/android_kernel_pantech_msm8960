@@ -449,6 +449,7 @@ struct kstatfs;
 struct vm_area_struct;
 struct vfsmount;
 struct cred;
+
 struct fscrypt_info;
 struct fscrypt_operations;
 
