@@ -2463,7 +2463,7 @@ static int handle_truncate(struct file *filp)
 	if (!error)
 		error = security_path_truncate(path);
 	if (!error) {
-		error = do_truncate(path->dentry, 0,
+		error = do_truncate2(path->mnt, path->dentry, 0,
 				    ATTR_MTIME|ATTR_CTIME|ATTR_OPEN,
 				    filp);
 	}
@@ -2484,7 +2484,7 @@ static int may_o_create(struct path *dir, struct dentry *dentry, umode_t mode)
 	if (error)
 		return error;
 
-	error = inode_permission(dir->dentry->d_inode, MAY_WRITE | MAY_EXEC);
+	error = inode_permission2(dir->mnt, dir->dentry->d_inode, MAY_WRITE | MAY_EXEC);
 	if (error)
 		return error;
 
@@ -3002,7 +3002,7 @@ static int do_tmpfile(int dfd, struct filename *pathname,
 	if (unlikely(error))
 		goto out;
 	/* we want directory to be writable */
-	error = inode_permission(nd->inode, MAY_WRITE | MAY_EXEC);
+	error = inode_permission2(nd->path.mnt, nd->inode, MAY_WRITE | MAY_EXEC);
 	if (error)
 		goto out2;
 	dentry = nd->path.dentry;
