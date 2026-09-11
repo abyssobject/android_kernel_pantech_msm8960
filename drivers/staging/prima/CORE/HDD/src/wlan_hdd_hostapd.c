@@ -3373,6 +3373,8 @@ hdd_adapter_t* hdd_wlan_create_ap_dev( hdd_context_t *pHddCtx, tSirMacAddr macAd
         pWlanHostapdDev->mtu = HDD_DEFAULT_MTU;
     
         vos_mem_copy(pWlanHostapdDev->dev_addr, (void *)macAddr,sizeof(tSirMacAddr));
+        /* Preserve the factory address for ETHTOOL_GPERMADDR. */
+        vos_mem_copy(pWlanHostapdDev->perm_addr, macAddr, sizeof(tSirMacAddr));
         vos_mem_copy(pHostapdAdapter->macAddressCurrent.bytes, (void *)macAddr, sizeof(tSirMacAddr));
 
         pWlanHostapdDev->destructor = free_netdev;
