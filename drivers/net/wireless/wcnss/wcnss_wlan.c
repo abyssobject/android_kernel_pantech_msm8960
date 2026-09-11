@@ -15,6 +15,7 @@
 #include <linux/io.h>
 #include <linux/slab.h>
 #include <linux/err.h>
+#include <linux/etherdevice.h>
 #include <linux/platform_device.h>
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
@@ -280,7 +281,9 @@ static struct {
 static ssize_t wcnss_wlan_macaddr_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	char macAddr[WLAN_MAC_ADDR_SIZE];
+	unsigned int octets[WLAN_MAC_ADDR_SIZE];
+	u8 macAddr[WLAN_MAC_ADDR_SIZE];
+	int i;
 
 	if (!penv)
 		return -ENODEV;
@@ -288,13 +291,20 @@ static ssize_t wcnss_wlan_macaddr_store(struct device *dev,
 	pr_debug("%s: Receive MAC Addr From user space: %s\n", __func__, buf);
 
 	if (WLAN_MAC_ADDR_SIZE != sscanf(buf, MAC_ADDRESS_STR,
-		 (int *)&macAddr[0], (int *)&macAddr[1],
-		 (int *)&macAddr[2], (int *)&macAddr[3],
-		 (int *)&macAddr[4], (int *)&macAddr[5])) {
+		 &octets[0], &octets[1], &octets[2],
+		 &octets[3], &octets[4], &octets[5])) {
 
 		pr_err("%s: Failed to Copy MAC\n", __func__);
 		return -EINVAL;
 	}
+
+	for (i = 0; i < WLAN_MAC_ADDR_SIZE; i++) {
+		if (octets[i] > 0xff)
+			return -EINVAL;
+		macAddr[i] = octets[i];
+	}
+	if (!is_valid_ether_addr(macAddr))
+		return -EINVAL;
 
 	memcpy(penv->wlan_nv_macAddr, macAddr, sizeof(penv->wlan_nv_macAddr));
 
