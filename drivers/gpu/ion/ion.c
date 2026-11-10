@@ -1304,11 +1304,42 @@ end:
 }
 EXPORT_SYMBOL(ion_import_dma_buf);
 
+/* Pre-heap-mask userspace ABI used by the Pantech ACDB loader. */
+struct ion_allocation_data_legacy {
+	size_t len;
+	size_t align;
+	unsigned int flags;
+	struct ion_handle *handle;
+};
+
+#define ION_IOC_ALLOC_LEGACY _IOWR(ION_IOC_MAGIC, 0, \
+					 struct ion_allocation_data_legacy)
+
 static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct ion_client *client = filp->private_data;
 
 	switch (cmd) {
+	case ION_IOC_ALLOC_LEGACY:
+	{
+		struct ion_allocation_data_legacy data;
+
+		if (copy_from_user(&data, (void __user *)arg, sizeof(data)))
+			return -EFAULT;
+		/* Heap bits shared the old flags field; do not pass them as
+		 * modern allocation flags (e.g. bit 30 now forces contiguous).
+		 */
+		data.handle = ion_alloc(client, data.len, data.align,
+					data.flags,
+					data.flags & (ION_FLAG_CACHED | ION_SECURE));
+		if (IS_ERR(data.handle))
+			return PTR_ERR(data.handle);
+		if (copy_to_user((void __user *)arg, &data, sizeof(data))) {
+			ion_free(client, data.handle);
+			return -EFAULT;
+		}
+		break;
+	}
 	case ION_IOC_ALLOC:
 	{
 		struct ion_allocation_data data;

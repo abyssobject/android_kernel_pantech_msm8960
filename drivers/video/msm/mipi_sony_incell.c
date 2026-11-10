@@ -532,6 +532,8 @@ static void mipi_sony_set_backlight(struct msm_fb_data_type *mfd)
 	mutex_lock(&sony_state.lcd_mutex);	
 
 	wrdisbv[1] = mipi_sony_backlight_tbl[bl_level];
+	/* Keep DSI clocks on for both the mode registers and the command. */
+	mipi_dsi_clk_cfg(1);
 
 	if(!gpio_get_value_cansleep(gpio_lcd_bl_en))
 		 gpio_set_value_cansleep(gpio_lcd_bl_en, GPIO_HIGH_VALUE);
@@ -552,6 +554,7 @@ static void mipi_sony_set_backlight(struct msm_fb_data_type *mfd)
 #endif
 	prev_bl_level = mfd->bl_level;	
 	mipi_set_tx_power_mode(1);
+	mipi_dsi_clk_cfg(0);
 
 	mutex_unlock(&sony_state.lcd_mutex);	
 
