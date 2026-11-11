@@ -1346,14 +1346,8 @@ SYSCALL_DEFINE3(getrandom, char __user *, buf, size_t, count,
 	if (flags & GRND_RANDOM)
 		return _random_read(flags & GRND_NONBLOCK, buf, count);
 
-	if (unlikely(nonblocking_pool.initialized == 0)) {
-		if (flags & GRND_NONBLOCK)
-			return -EAGAIN;
-		wait_event_interruptible(urandom_init_wait,
-					 nonblocking_pool.initialized);
-		if (signal_pending(current))
-			return -ERESTARTSYS;
-	}
+	/* ef52: no wait for the pool, as /dev/urandom (nothing initialises
+	 * it during boot on this kernel, and Android 13 blocked on it) */
 	return urandom_read(NULL, buf, count, NULL);
 }
 

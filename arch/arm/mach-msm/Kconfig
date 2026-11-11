@@ -2686,4 +2686,12 @@ config AUTOSMP
 	help
 	  Automatically hotplugs the multiple CPU cores based on
 	  CPU load and suspend state.
+
+config EF52_CPU_OC
+	bool "ef52: Krait 1782/1890 MHz steps (overclock)"
+	default n
+	help
+	  Adds 1782 and 1890 MHz to the APQ8064 speed bin 1 tables
+	  (see ef52-port/patches/cpu_oc.py). Off in the ROM kernel.
+
 endif

@@ -21,6 +21,9 @@
 #include <linux/blkdev.h>
 #include <linux/pagemap.h>
 #include <linux/export.h>
+#include <linux/aio.h>
+#include <linux/mmu_context.h>
+#include <linux/uio.h>
 #include <asm/unaligned.h>
 
 #include <linux/usb/composite.h>
@@ -875,6 +878,199 @@ ffs_epfile_read(struct file *file, char __user *buf, size_t len, loff_t *ptr)
 	return ffs_epfile_io(file, buf, len, 1);
 }
 
+/*
+ * Asynchronous I/O (io_submit), after upstream 2e4c7553cd6f "usb: gadget:
+ * f_fs: add aio support". Android 12 adbd only talks to FunctionFS through
+ * AIO; without aio_read/aio_write io_submit fails with EINVAL and adb stays
+ * offline. Each request gets its own usb_request and bounce buffer; the
+ * completion hands over to a work item, which copies read data into the
+ * submitter's address space and completes the kiocb.
+ */
+struct ffs_io_data {
+	struct kiocb			*kiocb;
+	struct iovec			*iovec;
+	unsigned long			nr_segs;
+	struct mm_struct		*mm;
+	struct usb_ep			*ep;
+	struct usb_request		*req;
+	char				*buf;
+	size_t				len;
+	int				read;
+	struct work_struct		work;
+};
+
+static void ffs_aio_complete_work(struct work_struct *work)
+{
+	struct ffs_io_data *io = container_of(work, struct ffs_io_data, work);
+	int ret = io->req->status ? io->req->status : io->req->actual;
+
+	if (io->read && ret > 0) {
+		size_t left = ret, off = 0;
+		unsigned long i;
+
+		use_mm(io->mm);
+		for (i = 0; i < io->nr_segs && left; i++) {
+			size_t n = min_t(size_t, left, io->iovec[i].iov_len);
+
+			if (copy_to_user(io->iovec[i].iov_base, io->buf + off, n)) {
+				ret = -EFAULT;
+				break;
+			}
+			off += n;
+			left -= n;
+		}
+		unuse_mm(io->mm);
+	}
+
+	aio_complete(io->kiocb, ret, ret);
+
+	usb_ep_free_request(io->ep, io->req);
+	mmdrop(io->mm);
+	kfree(io->buf);
+	kfree(io->iovec);
+	kfree(io);
+}
+
+static void ffs_aio_req_complete(struct usb_ep *_ep, struct usb_request *req)
+{
+	struct ffs_io_data *io = req->context;
+
+	ENTER();
+	schedule_work(&io->work);
+}
+
+static int ffs_aio_cancel(struct kiocb *kiocb, struct io_event *event)
+{
+	struct ffs_io_data *io = kiocb->private;
+
+	ENTER();
+	/* completes the request with -ECONNRESET, which completes the kiocb */
+	usb_ep_dequeue(io->ep, io->req);
+	/*
+	 * kill_ctx() and io_cancel() take an extra kiocb reference before
+	 * calling ki_cancel; drop it as gadgetfs' ep_aio_cancel does. Without
+	 * this reqs_active never reaches 0 and an exiting adbd (adb root, USB
+	 * reconnect) hangs in kill_ctx() in D state, leaving adb offline.
+	 */
+	aio_put_req(kiocb);
+	return -EAGAIN;
+}
+
+static ssize_t ffs_epfile_aio_io(struct kiocb *kiocb, const struct iovec *iov,
+				 unsigned long nr_segs, int read)
+{
+	struct ffs_epfile *epfile = kiocb->ki_filp->private_data;
+	struct ffs_io_data *io;
+	struct ffs_ep *ep;
+	size_t len = iov_length(iov, nr_segs);
+	unsigned long i;
+	ssize_t ret;
+
+	ENTER();
+
+	if (WARN_ON(epfile->ffs->state != FFS_ACTIVE))
+		return -ENODEV;
+	ep = epfile->ep;
+	if (!ep)
+		return -EAGAIN;
+	/* halting an endpoint is only done through the synchronous path */
+	if (!read == !epfile->in)
+		return -EINVAL;
+
+	io = kzalloc(sizeof(*io), GFP_KERNEL);
+	if (!io)
+		return -ENOMEM;
+	io->kiocb = kiocb;
+	io->read = read;
+	io->len = len;
+	io->nr_segs = nr_segs;
+	INIT_WORK(&io->work, ffs_aio_complete_work);
+
+	ret = -ENOMEM;
+	io->iovec = kmemdup(iov, nr_segs * sizeof(*iov), GFP_KERNEL);
+	io->buf = kmalloc(len, GFP_KERNEL);
+	if (!io->iovec || !io->buf)
+		goto err_free;
+
+	if (!read) {
+		size_t off = 0;
+
+		for (i = 0; i < nr_segs; i++) {
+			if (copy_from_user(io->buf + off, iov[i].iov_base,
+					   iov[i].iov_len)) {
+				ret = -EFAULT;
+				goto err_free;
+			}
+			off += iov[i].iov_len;
+		}
+	}
+
+	/*
+	 * Pin only the mm_struct (mm_count), not the address space: holding
+	 * mm_users (get_task_mm) kept an exiting adbd's mm alive, so exit_aio()
+	 * never ran, the queued reads were never cancelled and kept the
+	 * endpoint files open; FunctionFS was not reset and the next adbd got
+	 * ESRCH writing its descriptors until a USB reconnect. exit_aio() runs
+	 * before exit_mmap(), so use_mm() in the completion work stays valid.
+	 */
+	io->mm = current->mm;
+	if (!io->mm) {
+		ret = -EINVAL;
+		goto err_free;
+	}
+	atomic_inc(&io->mm->mm_count);
+
+	spin_lock_irq(&epfile->ffs->eps_lock);
+	if (epfile->ep != ep || !ep->ep) {
+		spin_unlock_irq(&epfile->ffs->eps_lock);
+		ret = -ESHUTDOWN;
+		goto err_mm;
+	}
+	io->ep = ep->ep;
+	io->req = usb_ep_alloc_request(ep->ep, GFP_ATOMIC);
+	if (!io->req) {
+		spin_unlock_irq(&epfile->ffs->eps_lock);
+		ret = -ENOMEM;
+		goto err_mm;
+	}
+	io->req->buf = io->buf;
+	io->req->length = len;
+	io->req->context = io;
+	io->req->complete = ffs_aio_req_complete;
+
+	kiocb->private = io;
+	kiocb->ki_cancel = ffs_aio_cancel;
+
+	ret = usb_ep_queue(ep->ep, io->req, GFP_ATOMIC);
+	spin_unlock_irq(&epfile->ffs->eps_lock);
+	if (ret) {
+		kiocb->ki_cancel = NULL;
+		usb_ep_free_request(io->ep, io->req);
+		goto err_mm;
+	}
+	return -EIOCBQUEUED;
+
+err_mm:
+	mmdrop(io->mm);
+err_free:
+	kfree(io->buf);
+	kfree(io->iovec);
+	kfree(io);
+	return ret;
+}
+
+static ssize_t ffs_epfile_aio_write(struct kiocb *kiocb, const struct iovec *iov,
+				    unsigned long nr_segs, loff_t pos)
+{
+	return ffs_epfile_aio_io(kiocb, iov, nr_segs, 0);
+}
+
+static ssize_t ffs_epfile_aio_read(struct kiocb *kiocb, const struct iovec *iov,
+				   unsigned long nr_segs, loff_t pos)
+{
+	return ffs_epfile_aio_io(kiocb, iov, nr_segs, 1);
+}
+
 static int
 ffs_epfile_open(struct inode *inode, struct file *file)
 {
@@ -971,6 +1167,8 @@ static const struct file_operations ffs_epfile_operations = {
 	.open =		ffs_epfile_open,
 	.write =	ffs_epfile_write,
 	.read =		ffs_epfile_read,
+	.aio_write =	ffs_epfile_aio_write,
+	.aio_read =	ffs_epfile_aio_read,
 	.release =	ffs_epfile_release,
 	.unlocked_ioctl =	ffs_epfile_ioctl,
 };

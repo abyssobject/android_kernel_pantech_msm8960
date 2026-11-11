@@ -3165,6 +3165,8 @@ static hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMac
       strlcpy(pWlanDev->name, name, IFNAMSIZ);
 
       vos_mem_copy(pWlanDev->dev_addr, (void *)macAddr, sizeof(tSirMacAddr));
+      /* Preserve the factory address for ETHTOOL_GPERMADDR. */
+      vos_mem_copy(pWlanDev->perm_addr, macAddr, sizeof(tSirMacAddr));
       vos_mem_copy( pAdapter->macAddressCurrent.bytes, macAddr, sizeof(tSirMacAddr));
       pWlanDev->watchdog_timeo = HDD_TX_TIMEOUT;
       pWlanDev->hard_header_len += LIBRA_HW_NEEDED_HEADROOM;

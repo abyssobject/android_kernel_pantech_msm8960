@@ -960,15 +960,22 @@ static void __init reserve_ion_memory(void)
 				fixed_high_size += heap->size;
 				high_use_cma = use_cma;
 			} else if (use_cma) {
+				phys_addr_t limit = 0xb0000000;
+
 				/*
-				 * Heaps that use CMA but are not part of the
-				 * fixed set. Create wherever.
+				 * The DMA heap requires a direct kernel mapping,
+				 * including virt_to_page() for its scatterlist.
+				 * Honour the lowmem limit set by the ARM memory
+				 * setup instead of placing it in highmem when
+				 * the vmalloc area is enlarged.
 				 */
+				if (heap->type == ION_HEAP_TYPE_DMA)
+					limit = min(limit, memblock.current_limit);
 				dma_declare_contiguous(
 					heap->priv,
 					heap->size,
 					0,
-					0xb0000000);
+					limit);
 
 			}
 		}
