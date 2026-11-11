@@ -131,7 +131,7 @@ static struct adreno_device device_3d0 = {
 	.ib_check_level = 0,
 	.ft_policy = KGSL_FT_DEFAULT_POLICY,
 	.ft_pf_policy = KGSL_FT_PAGEFAULT_DEFAULT_POLICY,
-	.fast_hang_detect = 1,
+	.fast_hang_detect = 0, /* ef52: false hangs on WebView (Chromium) work */
 	.long_ib_detect = 1,
 };
 

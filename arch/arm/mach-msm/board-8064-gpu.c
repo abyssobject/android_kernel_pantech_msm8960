@@ -283,6 +283,14 @@ void __init apq8064_init_gpu(void)
 
 	if (cpu_is_apq8064ab())
 		kgsl_3d0_pdata.pwrlevel[0].gpu_freq = 450000000;
+#ifdef CONFIG_EF52_CPU_OC
+	if (cpu_is_apq8064())
+#ifdef CONFIG_EF52_CPU_OC_2G
+		kgsl_3d0_pdata.pwrlevel[0].gpu_freq = 480000000;  /* ef52: GPU 480 MHz */
+#else
+		kgsl_3d0_pdata.pwrlevel[0].gpu_freq = 450000000;  /* ef52: GPU 450 MHz */
+#endif
+#endif
 	if (SOCINFO_VERSION_MAJOR(version) == 2) {
 		kgsl_3d0_pdata.chipid = ADRENO_CHIPID(3, 2, 0, 2);
 	} else {
