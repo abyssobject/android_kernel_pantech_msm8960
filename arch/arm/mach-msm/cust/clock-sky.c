@@ -3529,7 +3529,11 @@ static struct clk_freq_tbl clk_tbl_gfx3d[] = {
 	F_GFX3D(266667000, pll2,  1,  3),
 	F_GFX3D(320000000, pll2,  2,  5),
 	F_GFX3D(400000000, pll2,  1,  2),
+#ifdef CONFIG_EF52_CPU_OC_2G
+	F_GFX3D(480000000, pll15, 1,  2),  /* ef52: PLL15 960 / 2 */
+#else
 	F_GFX3D(450000000, pll15, 1,  2),
+#endif
 	F_END
 };
 
@@ -3579,7 +3583,11 @@ static struct clk_freq_tbl clk_tbl_gfx3d_8930ab[] = {
 static unsigned long fmax_gfx3d_8064ab[VDD_DIG_NUM] = {
 	[VDD_DIG_LOW]     = 128000000,
 	[VDD_DIG_NOMINAL] = 325000000,
+#ifdef CONFIG_EF52_CPU_OC_2G
+	[VDD_DIG_HIGH]    = 480000000  /* ef52: GPU 480 MHz */
+#else
 	[VDD_DIG_HIGH]    = 450000000
+#endif
 };
 
 static unsigned long fmax_gfx3d_8064[VDD_DIG_NUM] = {
@@ -6614,6 +6622,22 @@ static void __init reg_init(void)
 			writel_relaxed(0x2B, PRNG_CLK_NS_REG);
 	}
 
+#ifdef CONFIG_EF52_CPU_OC
+	if (cpu_is_apq8064()) {
+		/* ef52: GPU 450 MHz: PLL15 at 900MHz (gfx3d 450 = PLL15/2) */
+#ifdef CONFIG_EF52_CPU_OC_2G
+		/* ef52: GPU 480 MHz: PLL15 at 960MHz (27 x (35 + 5/9)) */
+		pll15_config.l = 0x23 | BVAL(31, 7, 0x620);
+		pll15_config.m = 0x5;
+		pll15_config.n = 0x9;
+#else
+		pll15_config.l = 0x21 | BVAL(31, 7, 0x620);
+		pll15_config.m = 0x1;
+		pll15_config.n = 0x3;
+#endif
+		configure_sr_pll(&pll15_config, &pll15_regs, 0);
+	} else
+#endif
 	if (cpu_is_apq8064() || cpu_is_apq8064aa()) {
 		/* Program PLL15 to 975MHz with ref clk = 27MHz */
 		configure_sr_pll(&pll15_config, &pll15_regs, 0);
@@ -6701,6 +6725,10 @@ static void __init msm8960_clock_pre_init(void)
 	if (cpu_is_apq8064ab()) {
 		gfx3d_clk.c.fmax = fmax_gfx3d_8064ab;
 	}
+#ifdef CONFIG_EF52_CPU_OC
+	if (cpu_is_apq8064())
+		gfx3d_clk.c.fmax = fmax_gfx3d_8064ab;  /* ef52: GPU 450 MHz */
+#endif
 	if ((cpu_is_apq8064() &&
 		SOCINFO_VERSION_MAJOR(socinfo_get_version()) == 2) ||
 		cpu_is_apq8064ab() || cpu_is_apq8064aa()) {

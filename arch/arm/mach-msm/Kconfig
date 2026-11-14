@@ -2688,10 +2688,21 @@ config AUTOSMP
 	  CPU load and suspend state.
 
 config EF52_CPU_OC
-	bool "ef52: Krait 1782/1890 MHz steps (overclock)"
+	bool "ef52: Krait 1782/1890 MHz, Adreno 450 MHz (overclock)"
 	default n
 	help
-	  Adds 1782 and 1890 MHz to the APQ8064 speed bin 1 tables
+	  Adds 1782 and 1890 MHz to the APQ8064 speed bin 1 tables and
+	  a 450 MHz GPU level (PLL15 at 900 MHz, as on APQ8064AB)
 	  (see ef52-port/patches/cpu_oc.py). Off in the ROM kernel.
+
+
+config EF52_CPU_OC_2G
+	bool "ef52: Krait 1998 MHz, Adreno 480 MHz (second overclock level)"
+	depends on EF52_CPU_OC
+	default n
+	help
+	  On top of EF52_CPU_OC: a 1998 MHz CPU step (at the 1890 MHz
+	  voltage, the regulator limit) and the GPU at 480 MHz (PLL15
+	  at 960 MHz). Separate recovery zip; off in the ROM kernel.
 
 endif
