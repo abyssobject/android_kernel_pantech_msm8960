@@ -1355,8 +1355,9 @@ static int __perf_remove_from_context(void *info)
 }
 
 #ifdef CONFIG_SMP
-static void perf_retry_remove(struct perf_event *event)
+static void perf_retry_remove(struct remove_event *re)
 {
+	struct perf_event *event = re->event;
 	int up_ret;
 	/*
 	 * CPU was offline. Bring it online so we can
@@ -1366,13 +1367,13 @@ static void perf_retry_remove(struct perf_event *event)
 	if (!up_ret)
 		/* Try the remove call once again. */
 		cpu_function_call(event->cpu, __perf_remove_from_context,
-				  event);
+				  re);
 	else
 		pr_err("Failed to bring up CPU: %d, ret: %d\n",
 		       event->cpu, up_ret);
 }
 #else
-static void perf_retry_remove(struct perf_event *event)
+static void perf_retry_remove(struct remove_event *re)
 {
 }
 #endif
@@ -1390,10 +1391,15 @@ static void perf_retry_remove(struct perf_event *event)
  * When called from perf_event_exit_task, it's OK because the
  * context has been detached from its task.
  */
-static void __ref perf_remove_from_context(struct perf_event *event)
+static void __ref perf_remove_from_context(struct perf_event *event,
+						  bool detach_group)
 {
 	struct perf_event_context *ctx = event->ctx;
 	struct task_struct *task = ctx->task;
+	struct remove_event re = {
+		.event = event,
+		.detach_group = detach_group,
+	};
 	int ret;
 
 	lockdep_assert_held(&ctx->mutex);
@@ -1402,16 +1408,16 @@ static void __ref perf_remove_from_context(struct perf_event *event)
 		/*
 		 * Per cpu events are removed via an smp call
 		 */
-		cpu_function_call(event->cpu, __perf_remove_from_context, event);
+		cpu_function_call(event->cpu, __perf_remove_from_context, &re);
 		ret = cpu_function_call(event->cpu, __perf_remove_from_context,
-					event);
+					&re);
 		if (ret == -ENXIO)
-			perf_retry_remove(event);
+			perf_retry_remove(&re);
 		return;
 	}
 
 retry:
-	if (!task_function_call(task, __perf_remove_from_context, event))
+	if (!task_function_call(task, __perf_remove_from_context, &re))
 		return;
 
 	raw_spin_lock_irq(&ctx->lock);

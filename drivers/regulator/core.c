@@ -4435,7 +4435,7 @@ static int __init regulator_init_complete(void)
 			 * goes wrong. */
 			if (!suppress_info_printing)
 				rdev_info(rdev, "disabling\n");
-			ret = ops->disable(rdev);
+			ret = _regulator_do_disable(rdev);
 			if (ret != 0) {
 				rdev_err(rdev, "couldn't disable: %d\n", ret);
 			}
