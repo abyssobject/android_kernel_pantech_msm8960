@@ -38,6 +38,11 @@
 #include <linux/of_device.h>
 #include <linux/vmalloc.h>
 
+static inline size_t chunk_size(const struct gen_pool_chunk *chunk)
+{
+	return chunk->end_addr - chunk->start_addr + 1;
+}
+
 static int set_bits_ll(unsigned long *addr, unsigned long mask_to_set)
 {
 	unsigned long val, nval;
@@ -249,7 +254,7 @@ void gen_pool_destroy(struct gen_pool *pool)
 		chunk = list_entry(_chunk, struct gen_pool_chunk, next_chunk);
 		list_del(&chunk->next_chunk);
 
-		end_bit = (chunk->end_addr - chunk->start_addr) >> order;
+		end_bit = chunk_size(chunk) >> order;
 		nbytes = sizeof(struct gen_pool_chunk) +
 				(end_bit + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
 		bit = find_next_bit(chunk->bits, end_bit, 0);
@@ -303,7 +308,7 @@ u64 gen_pool_alloc_aligned(struct gen_pool *pool, size_t size,
 		unsigned long chunk_size;
 		if (size > atomic_read(&chunk->avail))
 			continue;
-		chunk_size = (chunk->end_addr - chunk->start_addr) >> order;
+		chunk_size = (chunk->end_addr - chunk->start_addr + 1) >> order;
 
 retry:
 		start_bit = bitmap_find_next_zero_area_off(chunk->bits, chunk_size,

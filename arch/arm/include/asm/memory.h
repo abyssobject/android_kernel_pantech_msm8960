@@ -199,6 +199,14 @@ static inline unsigned long __phys_to_virt(unsigned long x)
 #endif
 
 /*
+ * MSM: mach/memory.h provides its own __virt_to_phys()/__phys_to_virt()
+ * (memory hole / EBI1 layouts), which skips the block above.
+ */
+#ifndef PHYS_OFFSET
+#define PHYS_OFFSET	PLAT_PHYS_OFFSET
+#endif
+
+/*
  * PFNs are used to describe any physical page; this means
  * PFN 0 == physical address 0.
  *

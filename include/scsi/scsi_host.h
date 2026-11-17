@@ -677,6 +677,9 @@ struct Scsi_Host {
 	/* Don't resume host in EH */
 	unsigned eh_noresume:1;
 
+	/* The controller does not support WRITE SAME */
+	unsigned no_write_same:1;
+
 	/*
 	 * Set "SELECT REPORT" field to allow detection of well known logical
 	 * units along with standard LUs.
