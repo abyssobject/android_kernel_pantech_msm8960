@@ -355,6 +355,14 @@ struct mmc_card {
 /* To avoid eMMC device getting broken permanently due to HPI feature */
 #define MMC_QUIRK_BROKEN_HPI (1 << 12)
 
+/* 20121221 LS1-JHM modified : enabling BKOPS for eMMC performance */
+#ifdef CONFIG_FEATURE_PANTECH_SAMSUNG_EMMC_BUG_FIX
+/* 20121221 LS1-JHM modified : disabling BKOPS for samsung eMMC with firmware revision 0x12 (P18) */
+#define MMC_QUIRK_NO_BKOPS  (1<<24)
+/* 20121221 LS1-JHM modified : disabling TRIM for samsung eMMC with firmware revision 0x06 (P06) */
+#define MMC_QUIRK_NO_TRIM  (1<<25)
+#endif
+
 	unsigned int		erase_size;	/* erase size in sectors */
  	unsigned int		erase_shift;	/* if erase unit is power 2 */
  	unsigned int		pref_erase;	/* in sectors */

@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, 2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -33,11 +33,12 @@
 #include <sound/compress_driver.h>
 #include <sound/timer.h>
 
+#include <linux/wakelock.h> //20130814 hdj qcom n7player workaround patch
 #include "msm-pcm-q6.h"
 #include "msm-pcm-routing.h"
 
 static struct audio_locks the_locks;
-
+struct wake_lock audio_lpa_wlock;//20130814 hdj qcom n7player workaround patch
 struct snd_msm {
 	struct msm_audio *prtd;
 	unsigned volume;
@@ -386,6 +387,10 @@ static int msm_pcm_playback_close(struct snd_pcm_substream *substream)
 			pr_err("EOS cmd timeout\n");
 		prtd->pcm_irq_pos = 0;
 	}
+#if 1 //20130814 hdj qcom n7player workaround patch
+	wake_lock_timeout(&audio_lpa_wlock, 2*HZ); 
+#endif
+
 
 	dir = IN;
 	atomic_set(&prtd->pending_buffer, 0);
@@ -401,6 +406,7 @@ static int msm_pcm_playback_close(struct snd_pcm_substream *substream)
 	pr_debug("%s\n", __func__);
 	q6asm_audio_client_free(prtd->audio_client);
 	kfree(prtd);
+	runtime->private_data = NULL;
 
 	return 0;
 }
@@ -603,7 +609,9 @@ static int __init msm_soc_platform_init(void)
 	init_waitqueue_head(&the_locks.eos_wait);
 	init_waitqueue_head(&the_locks.write_wait);
 	init_waitqueue_head(&the_locks.read_wait);
-
+#if 1 //20130814 hdj qcom n7player workaround patch
+	wake_lock_init(&audio_lpa_wlock, WAKE_LOCK_SUSPEND, "audio_lpa_wake_lock");
+#endif
 	return platform_driver_register(&msm_pcm_driver);
 }
 module_init(msm_soc_platform_init);

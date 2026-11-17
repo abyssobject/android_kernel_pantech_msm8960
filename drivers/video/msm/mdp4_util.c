@@ -395,7 +395,7 @@ void mdp4_hw_init(void)
 	mdp_bus_scale_update_request
 		(MDP_BUS_SCALE_INIT, MDP_BUS_SCALE_INIT);
 
-#ifdef MDP4_ERROR
+#if defined(MDP4_ERROR) || defined(CONFIG_SKY_EF52S_BOARD) || defined(CONFIG_SKY_EF52K_BOARD)||defined(CONFIG_SKY_EF52L_BOARD) || defined(CONFIG_SKY_EF52W_BOARD) //shkwak 20121130, ef52 mipi cmd mode need mdp4_sw_reset 
 	/*
 	 * Issue software reset on DMA_P will casue DMA_P dma engine stall
 	 * on LCDC mode. However DMA_P does not stall at MDDI mode.
@@ -445,6 +445,11 @@ void mdp4_hw_init(void)
 
 	/* max read pending cmd config */
 	outpdw(MDP_BASE + 0x004c, 0x02222);	/* 3 pending requests */
+
+#ifdef CONFIG_PANTECH_LCD_QC_CONFIG_AXI_BUS_FOR_FIXING_UNDERRUN
+	outpdw(MDP_BASE + 0x0400, 0x7FF);
+	outpdw(MDP_BASE + 0x0404, 0x30050); 
+#endif
 
 #ifndef CONFIG_FB_MSM_OVERLAY
 	/* both REFRESH_MODE and DIRECT_OUT are ignored at BLT mode */
@@ -586,8 +591,10 @@ irqreturn_t mdp4_isr(int irq, void *ptr)
 	}
 	if (isr & INTR_DMA_E_DONE) {
 		mdp4_stat.intr_dma_e++;
+#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL  // [LS5], 20121120, kkcho
 		if (panel & MDP4_PANEL_DTV)
 			mdp4_dmae_done_dtv();
+#endif
 	}
 #ifdef CONFIG_FB_MSM_OVERLAY
 	if (isr & INTR_OVERLAY0_DONE) {
@@ -2739,19 +2746,42 @@ static int mdp4_argc_process_write_req(uint32_t *offset,
 	struct mdp_ar_gc_lut_data r[MDP_AR_GC_MAX_STAGES];
 	struct mdp_ar_gc_lut_data g[MDP_AR_GC_MAX_STAGES];
 	struct mdp_ar_gc_lut_data b[MDP_AR_GC_MAX_STAGES];
+	uint8_t num_r_stages;
+	uint8_t num_g_stages;
+	uint8_t num_b_stages;
+
+	if (get_user(num_r_stages, &pgc_ptr->num_r_stages)) {
+		pr_err("%s failed: num_r_stages : Invalid arg\n", __func__);
+		return -EFAULT;
+	}
+
+	if (get_user(num_g_stages, &pgc_ptr->num_g_stages)) {
+		pr_err("%s failed: num_g_stages : Invalid arg\n", __func__);
+		return -EFAULT;
+	}
+
+	if (get_user(num_b_stages, &pgc_ptr->num_b_stages)) {
+		pr_err("%s failed: num_b_stages : Invalid arg\n", __func__);
+		return -EFAULT;
+	}
+
+	if ((!num_r_stages || num_r_stages > MDP_AR_GC_MAX_STAGES) ||
+		(!num_g_stages || num_g_stages > MDP_AR_GC_MAX_STAGES) ||
+		(!num_b_stages || num_b_stages > MDP_AR_GC_MAX_STAGES))
+		return -EINVAL;
 
 	ret = copy_from_user(&r[0], pgc_ptr->r_data,
-		pgc_ptr->num_r_stages * sizeof(struct mdp_ar_gc_lut_data));
+		num_r_stages * sizeof(struct mdp_ar_gc_lut_data));
 
 	if (!ret) {
 		ret = copy_from_user(&g[0],
 				pgc_ptr->g_data,
-				pgc_ptr->num_g_stages
+				num_g_stages
 				* sizeof(struct mdp_ar_gc_lut_data));
 		if (!ret)
 			ret = copy_from_user(&b[0],
 					pgc_ptr->b_data,
-					pgc_ptr->num_b_stages
+					num_b_stages
 					* sizeof(struct mdp_ar_gc_lut_data));
 	}
 

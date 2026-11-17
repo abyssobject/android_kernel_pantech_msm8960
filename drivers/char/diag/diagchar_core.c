@@ -922,6 +922,7 @@ int diag_switch_logging(unsigned long ioarg)
 				pr_err("socket process, status: %d\n",
 					status);
 			}
+			driver->socket_process = NULL;
 		}
 	} else if (driver->logging_mode == SOCKET_MODE) {
 		driver->socket_process = current;
@@ -2138,6 +2139,17 @@ int mask_request_validate(unsigned char mask_buf[])
 			if ((ss_cmd == 0) || (ss_cmd == 0x1))
 				return 1;
 			break;
+
+		// FEATURE_SKY_CP_F3_TRACE[
+		// 20120701 hbwoo, Enable f3trace commands
+		case 0x25:
+			return 1;
+		//]
+		// FEATURE_SKY_CP_DMLOGGING_DPL[
+		case 0x2a:
+			return 1;
+		//]
+			
 		default:
 			return 0;
 			break;
