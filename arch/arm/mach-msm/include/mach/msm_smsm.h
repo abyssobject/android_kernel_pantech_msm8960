@@ -110,6 +110,20 @@ enum {
 	SMSM_NUM_INTR_MUX = 8,
 };
 
+//(+) p16652 for silent reboot
+typedef struct
+{
+	uint32_t  power_on_reason;
+	uint32_t  factory_cable_adc;
+	uint32_t  battery_id_adc;
+	uint32_t  hw_rev_adc;
+	uint32_t  power_on_mode;
+	uint8_t   silent_boot_mode;
+	uint32_t  hw_rev;
+	uint32_t  battery_id;
+	uint8_t  backlight_off;
+} oem_pm_smem_vendor1_data_type;
+
 #ifdef CONFIG_MSM_SMD
 int smsm_change_state(uint32_t smsm_entry,
 		      uint32_t clear_mask, uint32_t set_mask);
@@ -152,20 +166,6 @@ static inline int smsm_change_state(uint32_t smsm_entry,
 {
 	return -ENODEV;
 }
-
-//(+) p16652 for silent reboot
-typedef struct
-{
-	uint32_t  power_on_reason;
-	uint32_t  factory_cable_adc;
-	uint32_t  battery_id_adc;
-	uint32_t  hw_rev_adc;
-	uint32_t  power_on_mode;
-	uint8_t   silent_boot_mode;
-	uint32_t  hw_rev;
-	uint32_t  battery_id;
-	uint8_t  backlight_off;
-} oem_pm_smem_vendor1_data_type;
 
 /*
  * Changes the global interrupt mask.  The set and clear masks are re-applied

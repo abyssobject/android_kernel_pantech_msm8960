@@ -873,6 +873,17 @@ static int msm_vpe_process_vpe_cmd(struct msm_vpe_cfg_cmd *vpe_cmd,
 		}
 
 	case VPE_CMD_DISABLE:
+#ifdef CONFIG_PANTECH_CAMERA
+		if (vpe_ctrl->pp_frame_info) {
+			pr_err("%s : vpe_ctrl->pp_frame_info = %p ", __func__, vpe_ctrl->pp_frame_info);
+			msm_mctl_unmap_user_frame(&vpe_ctrl->pp_frame_info->src_frame,
+				vpe_ctrl->pp_frame_info->p_mctl->client, mctl->domain_num);
+			msm_mctl_unmap_user_frame(&vpe_ctrl->pp_frame_info->dest_frame,
+				vpe_ctrl->pp_frame_info->p_mctl->client, mctl->domain_num);
+			kfree(vpe_ctrl->pp_frame_info);
+			vpe_ctrl->pp_frame_info = NULL;			
+		}
+#endif
 		rc = vpe_disable(mctl);
 		break;
 
@@ -940,11 +951,19 @@ static long msm_vpe_subdev_ioctl(struct v4l2_subdev *sd,
 			pp_event_info.ack.cmd, pp_event_info.ack.status,
 			pp_event_info.ack.cookie);
 		if (copy_to_user((void __user *)v4l2_ioctl->ioctl_ptr,
-			&pp_event_info,	sizeof(struct msm_mctl_pp_event_info)))
+			&pp_event_info,	sizeof(struct msm_mctl_pp_event_info))) {
+			kfree(pp_frame_info);
+			kfree(event_qcmd);
 			pr_err("%s PAYLOAD Copy to user failed ", __func__);
+	                return -EINVAL;
+		 }
 
 		kfree(pp_frame_info);
 		kfree(event_qcmd);
+#ifdef CONFIG_PANTECH_CAMERA // pp_fram_info init
+		pp_frame_info = NULL;
+		event_qcmd = NULL;
+#endif
 		break;
 		}
 

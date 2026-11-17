@@ -24,6 +24,8 @@
 #include <linux/sysfs.h>
 #include <mach/pantech_sys.h>
 #include <linux/proc_fs.h>
+#include <linux/gfp.h>
+#include <linux/fs.h>
 #include <mach/msm_smsm.h>
 #include <asm/uaccess.h>
 
@@ -105,6 +107,38 @@ int oem_pm_write_proc_reset_info(struct file *file, const char *buffer, unsigned
     return len;
 }
 
+/* 3.10 has no read_proc/write_proc: wrap the old style handlers */
+static ssize_t pantech_resetinfo_read(struct file *file, char __user *buf,
+				      size_t count, loff_t *ppos)
+{
+	char *page, *start = NULL;
+	int eof = 0, n;
+	ssize_t ret;
+
+	if (*ppos)
+		return 0;
+	page = (char *)__get_free_page(GFP_KERNEL);
+	if (!page)
+		return -ENOMEM;
+	n = oem_pm_read_proc_reset_info(page, &start, 0, PAGE_SIZE, &eof, NULL);
+	ret = n > 0 ? simple_read_from_buffer(buf, count, ppos, page, n) : n;
+	free_page((unsigned long)page);
+	return ret;
+}
+
+static ssize_t pantech_resetinfo_write(struct file *file, const char __user *buf,
+				       size_t count, loff_t *ppos)
+{
+	return oem_pm_write_proc_reset_info(file, buf, count, NULL);
+}
+
+static const struct file_operations pantech_resetinfo_fops = {
+	.owner	= THIS_MODULE,
+	.read	= pantech_resetinfo_read,
+	.write	= pantech_resetinfo_write,
+	.llseek	= default_llseek,
+};
+
 void pantech_sys_reset_reason_init(void)
 {
 	unsigned int temp_usbdump_mode = 0x0;
@@ -152,13 +186,10 @@ void pantech_sys_reset_reason_init(void)
     printk(KERN_INFO "[%s] silent_boot_mode_backlight :%d\n",__func__, silent_boot_mode_backlight);
 
      /* section - related with silent reboot info */
-    oem_pm_power_on_info = create_proc_entry("pantech_resetinfo", S_IRUGO | S_IWUSR | S_IWGRP, NULL);
-
-    if (oem_pm_power_on_info) {
-        oem_pm_power_on_info->read_proc  = oem_pm_read_proc_reset_info;
-        oem_pm_power_on_info->write_proc = oem_pm_write_proc_reset_info;
-        oem_pm_power_on_info->data = NULL;
-    }
+    oem_pm_power_on_info = proc_create("pantech_resetinfo", S_IRUGO | S_IWUSR | S_IWGRP,
+                                       NULL, &pantech_resetinfo_fops);
+    if (!oem_pm_power_on_info)
+        printk(KERN_ERR "[%s] cannot create /proc/pantech_resetinfo\n", __func__);
 }
 EXPORT_SYMBOL(pantech_sys_reset_reason_init);
 
