@@ -116,6 +116,7 @@ EXPORT_SYMBOL_GPL(ehci_cf_port_reset_rwsem);
 #ifdef CONFIG_ANDROID_PANTECH_USB_OTG_INTENT
 extern int set_otg_dev_state(int mode);
 #endif /* CONFIG_ANDROID_PANTECH_USB_OTG_INTENT */
+static void hub_release(struct kref *kref);
 static int usb_reset_and_verify_device(struct usb_device *udev);
 
 static inline char *portspeed(struct usb_hub *hub, int portstatus)

@@ -22,6 +22,7 @@
 #include <linux/sysrq.h>
 #include <linux/init.h>
 #include <linux/nmi.h>
+#include <linux/console.h>
 #include <linux/coresight.h>
 #ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
 #include <mach/pantech_sys.h>

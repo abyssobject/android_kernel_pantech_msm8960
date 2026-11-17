@@ -62,6 +62,10 @@ static inline int valid_mmap_phys_addr_range(unsigned long pfn, size_t size)
 
 #if defined(CONFIG_DEVMEM) || defined(CONFIG_DEVKMEM)
 #ifdef CONFIG_STRICT_DEVMEM
+static inline int page_is_allowed(unsigned long pfn)
+{
+	return devmem_is_allowed(pfn);
+}
 static inline int range_is_allowed(unsigned long pfn, unsigned long size)
 {
 	u64 from = ((u64)pfn) << PAGE_SHIFT;
