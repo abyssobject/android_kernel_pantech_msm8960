@@ -38,6 +38,10 @@
 
 #define MAX_RAILS 5
 
+#ifdef CONFIG_PANTECH_APQ8064_KK_ECOMODE
+//2014.04.26 APQ8064_KK ecomode, 3C8 - p14978
+static int ecocpu;
+#endif
 static struct msm_thermal_data msm_thermal_info;
 static uint32_t limited_max_freq = UINT_MAX;
 static uint32_t limited_min_freq;
@@ -1342,6 +1346,10 @@ int msm_thermal_init(struct msm_thermal_data *pdata)
 		return -EINVAL;
 
 	enabled = 1;
+#ifdef CONFIG_PANTECH_APQ8064_KK_ECOMODE
+//2014.04.26 APQ8064_KK ecomode, 3C8 - p14978
+	ecocpu=0;
+#endif
 
 	ret = cpufreq_register_notifier(&msm_thermal_cpufreq_notifier,
 			CPUFREQ_POLICY_NOTIFIER);

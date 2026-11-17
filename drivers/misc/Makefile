@@ -72,3 +72,8 @@ obj-$(CONFIG_QSEECOM) += qseecom.o
 obj-$(CONFIG_QFP_FUSE) += qfp_fuse.o
 obj-$(CONFIG_TI_DRV2667) += ti_drv2667.o
 obj-$(CONFIG_QPNP_MISC) += qpnp-misc.o
+# Pantech
+obj-$(CONFIG_PIEZO) += ti_drv2665.o
+obj-$(CONFIG_PANTECH_WLAN_DEBUG) += wlan_debug.o
+obj-$(CONFIG_PN544) 		+= pn544.o
+obj-$(CONFIG_PANTECH_PS_WIFI_COM_PREF_LOGGING) += wifi_log.o

@@ -36,6 +36,9 @@
 #include <mach/scm.h>
 #include "msm_watchdog.h"
 #include "timer.h"
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+#include <mach/pantech_sys.h>
+#endif
 #include "wdog_debug.h"
 
 #define WDT0_RST	0x38
@@ -280,6 +283,14 @@ static void msm_restart_prepare(const char *cmd)
 			unsigned long code;
 			code = simple_strtoul(cmd + 4, NULL, 16) & 0xff;
 			__raw_writel(0x6f656d00 | code, restart_reason);
+#ifdef CONFIG_PANTECH_FS_AUTO_REPAIR 
+		/* added for ext4 auto repair */
+		} else if (!strncmp(cmd, "autorepair", 10)){
+			__raw_writel(0xDA000012, restart_reason);
+		} else if (!strncmp(cmd, "data_mount_err", 14)){
+			pantech_sys_reset_reason_set(SYS_RESET_REASON_DATA_MOUNT_ERR);
+			panic("EXT4-fs : data partition mount failed. going to run e2fsck\n");
+#endif
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
 		} else {
@@ -298,6 +309,10 @@ void msm_restart(char mode, const char *cmd)
 	msm_restart_prepare(cmd);
 
 	if (!use_restart_v2()) {
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+	pantech_sys_reset_reason_set(SYS_RESET_REASON_NORMAL);
+#endif
+
 		__raw_writel(0, msm_tmr0_base + WDT0_EN);
 		if (!(machine_is_msm8x60_fusion() ||
 		      machine_is_msm8x60_fusn_ffa())) {
@@ -354,6 +369,10 @@ static int __init msm_restart_init(void)
 		EMERGENCY_DLOAD_MODE_ADDR;
 	set_dload_mode(download_mode);
 #endif
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+	pantech_sys_reset_reason_init();
+#endif
+
 	msm_tmr0_base = msm_timer_get_timer0_base();
 	restart_reason = MSM_IMEM_BASE + RESTART_REASON_ADDR;
 	pm_power_off = msm_power_off;
