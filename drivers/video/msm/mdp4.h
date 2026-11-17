@@ -28,8 +28,16 @@ extern uint32 mdp4_extn_disp;
 extern char *mmss_cc_base;	/* mutimedia sub system clock control */
 extern spinlock_t dsi_clk_lock;
 extern u32 mdp_max_clk;
+#ifdef CONFIG_MDP_DEBUG_FS
 extern u32 dbg_force_ov0_blt;
+#else
+#define dbg_force_ov0_blt 0
+#endif
+#ifdef CONFIG_MDP_DEBUG_FS
 extern u32 dbg_force_ov1_blt;
+#else
+#define dbg_force_ov1_blt 0
+#endif
 
 extern u64 mdp_max_bw;
 #define MDP4_BW_AB_FACTOR (115)	/* 1.15 */
@@ -532,6 +540,18 @@ static inline void mdp4_dtv_base_swap(int cndx, struct mdp4_overlay_pipe *pipe)
 {
 	/* empty */
 }
+static inline void mdp4_dtv_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe)
+{
+	/* empty */
+}
+static inline int mdp4_dtv_pipe_commit(int cndx, int wait)
+{
+	return 0;
+}
+static inline void mdp4_dtv_set_avparams(struct mdp4_overlay_pipe *pipe, int id)
+{
+	/* empty */
+}
 #endif /* CONFIG_FB_MSM_DTV */
 
 void mdp4_dtv_set_black_screen(void);
@@ -554,7 +574,9 @@ void mdp4_overlay0_done_dsi_cmd(int cndx);
 void mdp4_primary_rdptr(void);
 void mdp4_dsi_cmd_overlay(struct msm_fb_data_type *mfd);
 int mdp4_lcdc_pipe_commit(int cndx, int wait);
+#ifdef CONFIG_FB_MSM_DTV
 int mdp4_dtv_pipe_commit(int cndx, int wait);
+#endif
 int mdp4_dsi_cmd_update_cnt(int cndx);
 void mdp4_dsi_rdptr_init(int cndx);
 void mdp4_dsi_vsync_init(int cndx);
@@ -600,7 +622,9 @@ void mdp4_solidfill_commit(int mixer);
 void mdp4_mixer_stage_commit(int mixer);
 void mdp4_dsi_cmd_do_update(int cndx, struct mdp4_overlay_pipe *pipe);
 void mdp4_lcdc_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe);
+#ifdef CONFIG_FB_MSM_DTV
 void mdp4_dtv_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe);
+#endif
 void mdp4_overlay_pipe_free(struct mdp4_overlay_pipe *pipe);
 void mdp4_overlay_dmap_cfg(struct msm_fb_data_type *mfd, int lcdc);
 void mdp4_overlay_dmap_xy(struct mdp4_overlay_pipe *pipe);
@@ -623,7 +647,9 @@ void mdp4_lcdc_wait4vsync(int cndx, long long *vtime);
 void mdp4_overlay_lcdc_vsync_push(struct msm_fb_data_type *mfd,
 				struct mdp4_overlay_pipe *pipe);
 void mdp4_mddi_overlay_dmas_restore(void);
+#ifdef CONFIG_FB_MSM_DTV
 void mdp4_dtv_set_avparams(struct mdp4_overlay_pipe *pipe, int id);
+#endif
 
 #ifndef CONFIG_FB_MSM_MIPI_DSI
 void mdp4_mddi_dma_busy_wait(struct msm_fb_data_type *mfd);
