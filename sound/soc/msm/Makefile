@@ -60,6 +60,7 @@ obj-$(CONFIG_SND_SOC_MSM_QDSP6_HDMI_AUDIO) += msm-dai-q6-hdmi.o
 obj-$(CONFIG_SND_SOC_VOICE) += msm-pcm-voice.o msm-pcm-voip.o msm-pcm-dtmf.o msm-pcm-host-voice.o
 snd-soc-qdsp6-objs += msm-pcm-lpa.o msm-pcm-afe.o
 obj-$(CONFIG_SND_SOC_QDSP6) += snd-soc-qdsp6.o
+snd-soc-qdsp6-objs += pantech_aud_ctl.o
 
 snd-soc-hostless-pcm-objs := msm-pcm-hostless.o
 obj-$(CONFIG_SND_SOC_MSM_HOSTLESS_PCM) += snd-soc-hostless-pcm.o
@@ -84,6 +85,58 @@ obj-$(CONFIG_SND_SOC_MSM8974) += snd-soc-msm8974.o
 snd-soc-qdsp6v2-objs := msm-dai-fe.o
 obj-$(CONFIG_SND_SOC_QDSP6V2) += snd-soc-qdsp6v2.o
 
+# External Audio AMP : FAB221 caltool test & YDA165
+ifeq ($(CONFIG_SKY_EF48S_BOARD), y)
+obj-$(CONFIG_SKY_SND_EXTERNAL_AMP) += sky_snd_fab2210.o sky_extampctrl_fab2210.o
+endif
+
+ifeq ($(CONFIG_SKY_EF49K_BOARD), y)
+obj-$(CONFIG_SKY_SND_EXTERNAL_AMP) += sky_snd_fab2210.o sky_extampctrl_fab2210.o
+endif
+
+ifeq ($(CONFIG_SKY_EF50L_BOARD), y)
+obj-$(CONFIG_SKY_SND_EXTERNAL_AMP) += sky_snd_fab2210.o sky_extampctrl_fab2210.o
+endif
+
+ifeq ($(CONFIG_SKY_EF51S_BOARD), y)
+ifeq ($(CONFIG_BOARD_VER), $(CONFIG_WS10))
+obj-$(CONFIG_SKY_SND_EXTERNAL_AMP) += sky_snd_fab2210.o sky_extampctrl_fab2210.o
+else
+obj-$(CONFIG_SKY_SND_EXTERNAL_AMP) += pantech_snd_extamp_yda165.o pantech_snd_extamp_yda165_ctrl.o pantech_snd_extamp_yda165_machdep.o pantech_snd_extamp_yda165_aud_sub.o pantech_snd_extamp_yda165_cal.o
+endif
+endif
+
+ifeq ($(CONFIG_SKY_EF51K_BOARD), y)
+ifeq ($(CONFIG_BOARD_VER), $(CONFIG_WS10))
+obj-$(CONFIG_SKY_SND_EXTERNAL_AMP) += sky_snd_fab2210.o sky_extampctrl_fab2210.o
+else
+obj-$(CONFIG_SKY_SND_EXTERNAL_AMP) += pantech_snd_extamp_yda165.o pantech_snd_extamp_yda165_ctrl.o pantech_snd_extamp_yda165_machdep.o pantech_snd_extamp_yda165_aud_sub.o pantech_snd_extamp_yda165_cal.o
+endif
+endif
+
+ifeq ($(CONFIG_SKY_EF51L_BOARD), y)
+ifeq ($(CONFIG_BOARD_VER), $(CONFIG_WS10))
+obj-$(CONFIG_SKY_SND_EXTERNAL_AMP) += sky_snd_fab2210.o sky_extampctrl_fab2210.o
+else
+obj-$(CONFIG_SKY_SND_EXTERNAL_AMP) += pantech_snd_extamp_yda165.o pantech_snd_extamp_yda165_ctrl.o pantech_snd_extamp_yda165_machdep.o pantech_snd_extamp_yda165_aud_sub.o pantech_snd_extamp_yda165_cal.o
+endif
+endif
+
+ifeq ($(CONFIG_SKY_EF52S_BOARD), y)
+obj-$(CONFIG_SKY_SND_EXTERNAL_AMP) += pantech_snd_extamp_yda165.o pantech_snd_extamp_yda165_ctrl.o pantech_snd_extamp_yda165_machdep.o pantech_snd_extamp_yda165_aud_sub.o pantech_snd_extamp_yda165_cal.o
+endif
+
+ifeq ($(CONFIG_SKY_EF52K_BOARD), y)
+obj-$(CONFIG_SKY_SND_EXTERNAL_AMP) += pantech_snd_extamp_yda165.o pantech_snd_extamp_yda165_ctrl.o pantech_snd_extamp_yda165_machdep.o pantech_snd_extamp_yda165_aud_sub.o pantech_snd_extamp_yda165_cal.o
+endif
+
+ifeq ($(CONFIG_SKY_EF52L_BOARD), y)
+obj-$(CONFIG_SKY_SND_EXTERNAL_AMP) += pantech_snd_extamp_yda165.o pantech_snd_extamp_yda165_ctrl.o pantech_snd_extamp_yda165_machdep.o pantech_snd_extamp_yda165_aud_sub.o pantech_snd_extamp_yda165_cal.o
+endif
+
+ifeq ($(CONFIG_SKY_EF52W_BOARD), y)
+obj-$(CONFIG_SKY_SND_EXTERNAL_AMP) += pantech_snd_extamp_yda165.o pantech_snd_extamp_yda165_ctrl.o pantech_snd_extamp_yda165_machdep.o pantech_snd_extamp_yda165_aud_sub.o pantech_snd_extamp_yda165_cal.o
+endif
 # for APQ 8074 sound card driver
 snd-soc-apq8074-objs := apq8074.o
 obj-$(CONFIG_SND_SOC_APQ8074) += snd-soc-apq8074.o

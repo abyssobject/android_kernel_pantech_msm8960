@@ -47,6 +47,9 @@
 #include <linux/utsname.h>
 
 #include <asm/uaccess.h>
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+#include <mach/pantech_sys_info.h>
+#endif
 
 #include <mach/msm_rtb.h>
 #define CREATE_TRACE_POINTS
@@ -255,6 +258,24 @@ static u32 clear_idx;
 static char __log_buf[__LOG_BUF_LEN] __aligned(LOG_ALIGN);
 static char *log_buf = __log_buf;
 static u32 log_buf_len = __LOG_BUF_LEN;
+
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+/*
+ * Vendor crash dump header. Note: since 3.5 the log buffer holds
+ * variable-length records, klog_end_idx points at the index of the next
+ * record instead of the old byte counter, so the 3.4 era dump tools see
+ * the buffer but not the old plain-text layout.
+ */
+static pantech_log_header dmesg_header;
+pantech_log_header *get_pantech_klog_dump_address(void)
+{
+	dmesg_header.klog_buf_address = (unsigned int *)virt_to_phys((void *)log_buf);
+	dmesg_header.klog_end_idx = (unsigned int *)virt_to_phys((void *)&log_next_idx);
+	dmesg_header.klog_size = (unsigned int)log_buf_len;
+
+	return &dmesg_header;
+}
+#endif
 
 /* cpu currently holding logbuf_lock */
 static volatile unsigned int logbuf_cpu = UINT_MAX;

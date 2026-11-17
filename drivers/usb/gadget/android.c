@@ -2718,6 +2718,44 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 	return size;
 }
 
+#if defined(CONFIG_PANTECH_SMB347_CHARGER)
+int android_get_udc_state(void)
+{
+	/* 3.10: android devices are kept on a list; the first one is the HS-USB gadget */
+	struct android_dev *dev = list_empty(&android_dev_list) ? NULL :
+		list_first_entry(&android_dev_list, struct android_dev, list_item);
+	struct usb_composite_dev *cdev;
+	int ret;
+
+	if (dev == NULL || dev->cdev == NULL) {
+		ret = 3;
+	} else {
+		cdev = dev->cdev;
+		if (cdev->config) {
+			ret = 1;
+		} else {
+			ret = 0;
+		}
+	}
+
+	return ret;
+}
+#endif
+
+#if defined(CONFIG_PANTECH_SMB347_CHARGER)
+/*
+ * ef52 3.10 port: the vendor "usb_mdm_control" sysfs switch
+ * (CONFIG_PANTECH_USB_BLOCKING_MDMSTATE) is not ported yet, so the state
+ * the SMB347 charger driver asks for stays at its boot default.
+ */
+static int is_mdm_usb_control_enabled;
+int get_pantech_mdm_state(void)
+{
+	return is_mdm_usb_control_enabled;
+}
+EXPORT_SYMBOL(get_pantech_mdm_state);
+#endif
+
 static ssize_t pm_qos_show(struct device *pdev,
 			   struct device_attribute *attr, char *buf)
 {
