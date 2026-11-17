@@ -59,7 +59,13 @@ static void led_blink_setup(struct led_classdev *led_cdev,
 {
 	if (!(led_cdev->flags & LED_BLINK_ONESHOT) &&
 	    led_cdev->blink_set &&
+	    
+#ifdef CONFIG_PANTECH_LED_BLINK_CONTROL
+	    !led_cdev->blink_set(led_cdev, delay_on, delay_off,
+			(led_cdev->brightness * 100) / led_cdev->max_brightness))
+#else
 	    !led_cdev->blink_set(led_cdev, delay_on, delay_off))
+#endif
 		return;
 
 	/* blink with 1 Hz as default if nothing specified */

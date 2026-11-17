@@ -18,7 +18,7 @@
 #include <linux/usb/msm_hsusb.h>
 #include <linux/usb/composite.h>
 #include <mach/msm_xo.h>
-#include <mach/msm_hsusb.h>
+#include <linux/usb/msm_hsusb.h>
 #include <mach/gpiomux.h>
 //20120830 ugot2do. changed.
 //#include <linux/gpio.h>

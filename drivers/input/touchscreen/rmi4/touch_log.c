@@ -1,3 +1,4 @@
+#include <linux/slab.h>
 #include <linux/proc_fs.h>
 
 #if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_RMI4_PANTECH)

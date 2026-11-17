@@ -92,6 +92,10 @@ void afe_set_dtmf_gen_rx_portid(u16 rx_port_id, int set);
 int afe_dtmf_generate_rx(int64_t duration_in_ms,
 			 uint16_t high_freq,
 			 uint16_t low_freq, uint16_t gain);
+#if 1 // SR 1340074 Subject: [PATCH] ASoC: msm: Unmap ACDB memory with Q6 on ACDB close
+int afe_unmap_cal_blocks(void);
+#endif
+
 int afe_register_get_events(u16 port_id,
 		void (*cb) (uint32_t opcode,
 		uint32_t token, uint32_t *payload, void *priv),

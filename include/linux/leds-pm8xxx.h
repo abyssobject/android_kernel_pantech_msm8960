@@ -18,10 +18,6 @@
 
 #define PM8XXX_LEDS_DEV_NAME	"pm8xxx-led"
 
-#define WLED_FIRST_STRING (1 << 2)
-#define WLED_SECOND_STRING (1 << 1)
-#define WLED_THIRD_STRING (1 << 0)
-
 /**
  * enum pm8xxx_leds - PMIC8XXX supported led ids
  * @PM8XXX_ID_LED_KB_LIGHT - keyboard backlight led
@@ -76,12 +72,16 @@ enum wled_ovp_threshold {
 	WLED_OVP_35V,
 	WLED_OVP_32V,
 	WLED_OVP_29V,
+#ifdef CONFIG_PANTECH_LED_BLINK_CONTROL
 	WLED_OVP_37V,
+#else
+	WLED_OVP_27V,
+#endif /* CONFIG_PANTECH_LED_BLINK_CONTROL */
 };
 
 /**
  *  wled_config_data - wled configuration data
- *  @strings - strings supported
+ *  @num_strings - number of wled strings supported
  *  @ovp_val - over voltage protection threshold
  *  @boost_curr_lim - boot current limit
  *  @cp_select - high pole capacitance
@@ -90,23 +90,20 @@ enum wled_ovp_threshold {
  *  @cs_out_en - current sink output enable
  *  @op_fdbck - selection of output as feedback for the boost
  *  @cabc_en - enable cabc for backlight pwm control
- *
  */
 struct wled_config_data {
-	u8	strings;
+	u8	num_strings;
 	u8	ovp_val;
 	u8	boost_curr_lim;
 	u8	cp_select;
 	u8	ctrl_delay_us;
+#ifndef CONFIG_PANTECH_LED_BLINK_CONTROL
+	u16	comp_res_val;
+#endif
 	bool	dig_mod_gen_en;
 	bool	cs_out_en;
 	bool	op_fdbck;
 	bool	cabc_en;
-	bool	sstart_en;
-	bool	max_current_ind;
-	u8 max_three;
-	u8 max_two;
-	u8 max_one;
 };
 
 /**
@@ -123,6 +120,9 @@ struct pm8xxx_led_config {
 	u8	id;
 	u8	mode;
 	u16	max_current;
+#ifndef CONFIG_PANTECH_LED_BLINK_CONTROL
+	u16	pwm_adjust_brightness;
+#endif
 	int	pwm_channel;
 	u32	pwm_period_us;
 	bool	default_state;
@@ -138,10 +138,16 @@ struct pm8xxx_led_config {
  *	for each LED. It maps one-to-one with
  *	array of LEDs
  * @num_configs - count of members of configs array
+#ifndef CONFIG_PANTECH_LED_BLINK_CONTROL
+ * @use_pwm - controlled by userspace
+#endif
  */
 struct pm8xxx_led_platform_data {
 	struct	led_platform_data	*led_core;
 	struct	pm8xxx_led_config	*configs;
 	u32				num_configs;
+#ifndef CONFIG_PANTECH_LED_BLINK_CONTROL
+	int				use_pwm;
+#endif
 };
 #endif /* __LEDS_PM8XXX_H__ */

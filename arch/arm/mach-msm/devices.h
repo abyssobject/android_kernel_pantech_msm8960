@@ -95,7 +95,13 @@ extern struct platform_device apq8064_device_uart_gsbi5;
 extern struct platform_device apq8064_device_qup_i2c_gsbi1;
 extern struct platform_device apq8064_device_qup_i2c_gsbi3;
 extern struct platform_device apq8064_device_qup_i2c_gsbi4;
+#ifdef CONFIG_PIEZO
+extern struct platform_device apq8064_device_qup_i2c_gsbi5;
+#endif
 extern struct platform_device apq8064_device_qup_spi_gsbi5;
+#ifdef CONFIG_SKY_DMB_SPI_HW
+extern struct platform_device apq8064_device_qup_spi_gsbi7;
+#endif
 extern struct platform_device apq8064_slim_ctrl;
 extern struct platform_device apq8064_device_ssbi_pmic1;
 extern struct platform_device apq8064_device_ssbi_pmic2;
@@ -339,6 +345,9 @@ extern struct platform_device qfec_device;
 extern struct platform_device msm_kgsl_3d0;
 extern struct platform_device msm_kgsl_2d0;
 extern struct platform_device msm_kgsl_2d1;
+
+extern struct resource kgsl_3d0_resources_8960ab[];
+extern int kgsl_num_resources_8960ab;
 
 extern struct resource kgsl_3d0_resources_8960ab[];
 extern int kgsl_num_resources_8960ab;

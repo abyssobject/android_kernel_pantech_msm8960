@@ -73,7 +73,11 @@ obj-$(CONFIG_QPNP_BMS)		+= qpnp-bms.o
 obj-$(CONFIG_PM8921_CHARGER)	+= pm8921-charger.o
 obj-$(CONFIG_QPNP_CHARGER)	+= qpnp-charger.o
 obj-$(CONFIG_LTC4088_CHARGER)	+= ltc4088-charger.o
+ifndef CONFIG_CUST_PANTECH_H
 obj-$(CONFIG_CHARGER_SMB347)	+= smb347-charger.o
+endif
 obj-$(CONFIG_CHARGER_TPS65090)	+= tps65090-charger.o
 obj-$(CONFIG_BATTERY_BCL)	+= battery_current_limit.o
+obj-$(CONFIG_PANTECH_SMB347_CHARGER)   += smb347_charger.o
+obj-$(CONFIG_PANTECH_MAX17058_FG) += max17058_battery.o
 obj-$(CONFIG_POWER_RESET)	+= reset/

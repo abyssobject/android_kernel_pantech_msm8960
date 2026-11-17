@@ -296,7 +296,11 @@ static const struct resource bms_cell_resources[] = {
 };
 
 static struct mfd_cell charger_cell = {
+#if defined(CONFIG_PANTECH_SMB347_CHARGER)
+	.name 		= CHARGER_DEV_NAME,
+#else
 	.name		= PM8921_CHARGER_DEV_NAME,
+#endif	
 	.id		= -1,
 	.resources	= charger_cell_resources,
 	.num_resources	= ARRAY_SIZE(charger_cell_resources),

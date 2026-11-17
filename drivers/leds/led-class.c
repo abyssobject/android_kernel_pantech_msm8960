@@ -162,7 +162,7 @@ static ssize_t led_blink_enable_store(struct device *dev, struct device_attribut
 
 		}
 		else{
-			led_brightness_set(led_cdev, 0);
+			led_set_brightness(led_cdev, 0);
 		//	printk("%s: name=%s, level=%d, brightness=%d  ,onMS=%lu,  offMS=%lu , flag=%d\n",
 		//	__func__,led_cdev->name, level,led_cdev->brightness, led_cdev->blink_delay_on,led_cdev->blink_delay_off, flag);
 		}

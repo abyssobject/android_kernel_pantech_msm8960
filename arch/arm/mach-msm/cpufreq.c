@@ -33,6 +33,9 @@
 #include <trace/events/power.h>
 #include <mach/socinfo.h>
 #include <mach/msm_bus.h>
+#if defined(CONFIG_PANTECH_DEBUG)
+#include <mach/pantech_debug.h>
+#endif
 
 #include "acpuclock.h"
 
@@ -132,6 +135,16 @@ static int set_cpu_freq(struct cpufreq_policy *policy, unsigned int new_freq,
 	}
 
 	cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
+
+#if defined(CONFIG_PANTECH_DEBUG)
+#if defined(CONFIG_PANTECH_DEBUG_DCVS_LOG) //p14291_pantech_dbg
+//    printk(KERN_ERR "CPU[%d] : Switching  %u KHz -> %u KHz\n",
+//				        policy->cpu, freqs.old, freqs.new);
+
+	if(pantech_debug_enable)
+		 pantech_debug_dcvs_log(policy->cpu, freqs.old, freqs.new);
+#endif
+#endif 
 
 	trace_cpu_frequency_switch_start(freqs.old, freqs.new, policy->cpu);
 	if (is_clk) {
@@ -262,6 +275,10 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 #ifdef CONFIG_MSM_CPU_FREQ_SET_MIN_MAX
 	policy->min = CONFIG_MSM_CPU_FREQ_MIN;
 	policy->max = CONFIG_MSM_CPU_FREQ_MAX;
+#endif
+#ifdef CONFIG_EF52_CPU_OC
+	if (policy->max > 1728000)
+		policy->max = 1728000;
 #endif
 
 	if (is_clk)
