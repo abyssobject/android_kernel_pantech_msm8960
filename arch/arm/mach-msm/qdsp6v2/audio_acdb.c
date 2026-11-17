@@ -20,6 +20,12 @@
 #include <linux/mm.h>
 #include <mach/qdsp6v2/audio_acdb.h>
 
+#if 1 // SR 1340074 Subject: [PATCH] ASoC: msm: Unmap ACDB memory with Q6 on ACDB close
+#include <sound/q6afe.h>
+#include <sound/q6adm.h>
+#include "../../../../sound/soc/msm/qdsp6/q6voice.h"
+#endif
+
 
 #define MAX_NETWORKS			15
 #define MAX_IOCTL_DATA			(MAX_NETWORKS * 2)
@@ -630,8 +636,18 @@ static int acdb_open(struct inode *inode, struct file *f)
 
 static int deregister_memory(void)
 {
+#if 1 // SR 1340074 Subject: [PATCH] ASoC: msm: Unmap ACDB memory with Q6 on ACDB close
+	int result = 0;
+	pr_debug("%s\n", __func__);
+#endif
 	if (atomic64_read(&acdb_data.mem_len)) {
 		mutex_lock(&acdb_data.acdb_mutex);
+#if 1 // SR 1340074 Subject: [PATCH] ASoC: msm: Unmap ACDB memory with Q6 on ACDB close
+		result = unmap_cal_tables();
+		if (result < 0)
+			pr_err("%s: unmap_cal_tables failed, err = %d\n",
+				__func__, result);
+#endif
 		atomic64_set(&acdb_data.mem_len, 0);
 		atomic_set(&acdb_data.vocstrm_total_cal_size, 0);
 		atomic_set(&acdb_data.vocproc_total_cal_size, 0);
@@ -641,7 +657,11 @@ static int deregister_memory(void)
 		ion_client_destroy(acdb_data.ion_client);
 		mutex_unlock(&acdb_data.acdb_mutex);
 	}
+#if 1 // SR 1340074 Subject: [PATCH] ASoC: msm: Unmap ACDB memory with Q6 on ACDB close
+	return result;
+#else	
 	return 0;
+#endif
 }
 
 static int register_memory(void)

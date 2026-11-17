@@ -280,6 +280,19 @@ static struct msm_pcm_routing_fdai_data
 	{0, INVALID_SESSION, {NULL, NULL} } },
 };
 
+
+#ifdef CONFIG_PANTECH_SND_QSOUND 
+int* get_fe_dsp_stream_ids(int index) {
+	if (index < 0 || index >= MSM_FRONTEND_DAI_MM_SIZE) return NULL;
+	return &fe_dai_map[index][0].strm_id;
+}
+
+struct msm_pcm_routing_bdai_data* get_be_entry(int index) {
+	if (index < 0 || index >= MSM_BACKEND_DAI_MAX) return NULL;
+	return &msm_bedais[index];
+}
+#endif
+
 static uint8_t is_be_dai_extproc(int be_dai)
 {
 	if (be_dai == MSM_BACKEND_DAI_EXTPROC_RX ||
@@ -606,6 +619,7 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 		session_type = SESSION_TYPE_TX;
 		path_type = ADM_PATH_LIVE_REC;
 	}
+
 
 	mutex_lock(&routing_lock);
 
@@ -1799,6 +1813,9 @@ static const struct snd_kcontrol_new mmul5_mixer_controls[] = {
 	MSM_FRONTEND_DAI_MULTIMEDIA5, 1, 0, msm_routing_get_audio_mixer,
 	msm_routing_put_audio_mixer),
 	SOC_SINGLE_EXT("INTERNAL_BT_SCO_TX", MSM_BACKEND_DAI_INT_BT_SCO_TX,
+	MSM_FRONTEND_DAI_MULTIMEDIA5, 1, 0, msm_routing_get_audio_mixer,
+	msm_routing_put_audio_mixer),
+	SOC_SINGLE_EXT("AUX_PCM_UL_TX", MSM_BACKEND_DAI_AUXPCM_TX,
 	MSM_FRONTEND_DAI_MULTIMEDIA5, 1, 0, msm_routing_get_audio_mixer,
 	msm_routing_put_audio_mixer),
 	SOC_SINGLE_EXT("AUX_PCM_TX", MSM_BACKEND_DAI_AUXPCM_TX,
@@ -3040,6 +3057,7 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MultiMedia4 Mixer", "SLIM_0_TX", "SLIMBUS_0_TX"},
 	{"MultiMedia1 Mixer", "SLIM_0_TX", "SLIMBUS_0_TX"},
 	{"MultiMedia1 Mixer", "AUX_PCM_UL_TX", "AUX_PCM_TX"},
+	{"MultiMedia5 Mixer", "AUX_PCM_UL_TX", "AUX_PCM_TX"},
 	{"MultiMedia5 Mixer", "AUX_PCM_TX", "AUX_PCM_TX"},
 	{"MultiMedia1 Mixer", "SEC_AUX_PCM_UL_TX", "SEC_AUX_PCM_TX"},
 
