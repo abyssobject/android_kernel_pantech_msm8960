@@ -373,7 +373,10 @@ int dwc3_send_gadget_generic_command(struct dwc3 *dwc, int cmd, u32 param)
 		if (!(reg & DWC3_DGCMD_CMDACT)) {
 			dev_vdbg(dwc->dev, "Command Complete --> %d\n",
 					DWC3_DGCMD_STATUS(reg));
-			ret = 0;
+			if (DWC3_DGCMD_STATUS(reg))
+				ret = -EINVAL;
+			else
+				ret = 0;
 			break;
 		}
 
@@ -436,6 +439,8 @@ int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
 			 */
 			if (reg & 0x2000)
 				ret = -EAGAIN;
+			else if (DWC3_DEPCMD_STATUS(reg))
+				ret = -EINVAL;
 			else
 				ret = 0;
 			break;
@@ -1019,6 +1024,9 @@ static void dwc3_prepare_trbs(struct dwc3_ep *dep, bool starting)
 					break;
 			}
 			dbg_queue(dep->number, &req->request, 0);
+
+			if (last_one)
+				break;
 		} else {
 			dma = req->request.dma;
 			length = req->request.length;
@@ -1415,7 +1423,7 @@ static int dwc3_gadget_ep_set_halt(struct usb_ep *ep, int value)
 	}
 
 	dbg_event(dep->number, "HALT", value);
-	ret = __dwc3_gadget_ep_set_halt(dep, value);
+	ret = __dwc3_gadget_ep_set_halt(dep, value, false);
 out:
 	spin_unlock_irqrestore(&dwc->lock, flags);
 

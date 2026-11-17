@@ -43,6 +43,7 @@
 #include <linux/irqchip/arm-gic.h>
 #include <linux/syscore_ops.h>
 
+#include <asm/cputype.h>
 #include <asm/irq.h>
 #include <asm/exception.h>
 #include <asm/smp_plat.h>
