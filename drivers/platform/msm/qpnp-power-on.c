@@ -27,6 +27,10 @@
 /* Common PNP defines */
 #define QPNP_PON_REVISION2(base)		(base + 0x01)
 
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+#include <mach/pantech_sys.h>
+#endif
+
 /* PON common register addresses */
 #define QPNP_PON_RT_STS(base)			(base + 0x10)
 #define QPNP_PON_PULL_CTL(base)			(base + 0x70)
@@ -435,6 +439,10 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 
 	input_report_key(pon->pon_input, cfg->key_code, key_status);
 	input_sync(pon->pon_input);
+
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+	pantech_force_dump_key(cfg->key_code, 1);
+#endif
 
 	cfg->old_state = !!key_status;
 

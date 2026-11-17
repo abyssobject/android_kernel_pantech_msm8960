@@ -167,6 +167,7 @@ static inline int smsm_change_state(uint32_t smsm_entry,
 	return -ENODEV;
 }
 
+
 /*
  * Changes the global interrupt mask.  The set and clear masks are re-applied
  * every time the global interrupt mask is updated for callback registration

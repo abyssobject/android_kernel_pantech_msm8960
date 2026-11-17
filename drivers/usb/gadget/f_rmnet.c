@@ -63,6 +63,11 @@ static unsigned int no_data_bam_ports;
 static unsigned int no_data_bam2bam_ports;
 static unsigned int no_data_hsic_ports;
 static unsigned int no_data_hsuart_ports;
+
+#ifdef CONFIG_PANTECH_ANDROID_USB
+extern ushort getVendorID(void );
+#endif
+
 static struct rmnet_ports {
 	enum transport_type		data_xport;
 	enum transport_type		ctrl_xport;
@@ -81,6 +86,21 @@ static struct usb_interface_descriptor rmnet_interface_desc = {
 	.bInterfaceProtocol =	USB_CLASS_VENDOR_SPEC,
 	/* .iInterface = DYNAMIC */
 };
+
+#ifdef CONFIG_PANTECH_ANDROID_USB
+static struct usb_interface_descriptor pantech_rmnet_interface_desc = {
+	.bLength =		USB_DT_INTERFACE_SIZE,
+	.bDescriptorType =	USB_DT_INTERFACE,
+	.bNumEndpoints =	3,
+	//.bInterfaceClass =	0xE0,
+	//.bInterfaceSubClass =	0x01,
+	//.bInterfaceProtocol =	0x03,
+	.bInterfaceClass =	USB_CLASS_VENDOR_SPEC,
+	.bInterfaceSubClass =	0xF0,
+	.bInterfaceProtocol =	0x00,
+	/* .iInterface = DYNAMIC */
+};
+#endif
 
 /* Full speed support */
 static struct usb_endpoint_descriptor rmnet_fs_notify_desc = {
@@ -116,6 +136,16 @@ static struct usb_descriptor_header *rmnet_fs_function[] = {
 	NULL,
 };
 
+#ifdef CONFIG_PANTECH_ANDROID_USB
+static struct usb_descriptor_header *pantech_rmnet_fs_function[] = {
+	(struct usb_descriptor_header *) &pantech_rmnet_interface_desc,
+	(struct usb_descriptor_header *) &rmnet_fs_notify_desc,
+	(struct usb_descriptor_header *) &rmnet_fs_in_desc,
+	(struct usb_descriptor_header *) &rmnet_fs_out_desc,
+	NULL,
+};
+#endif
+
 /* High speed support */
 static struct usb_endpoint_descriptor rmnet_hs_notify_desc  = {
 	.bLength =		USB_DT_ENDPOINT_SIZE,
@@ -149,6 +179,16 @@ static struct usb_descriptor_header *rmnet_hs_function[] = {
 	(struct usb_descriptor_header *) &rmnet_hs_out_desc,
 	NULL,
 };
+
+#ifdef CONFIG_PANTECH_ANDROID_USB
+static struct usb_descriptor_header *pantech_rmnet_hs_function[] = {
+	(struct usb_descriptor_header *) &pantech_rmnet_interface_desc,
+	(struct usb_descriptor_header *) &rmnet_hs_notify_desc,
+	(struct usb_descriptor_header *) &rmnet_hs_in_desc,
+	(struct usb_descriptor_header *) &rmnet_hs_out_desc,
+	NULL,
+};
+#endif
 
 /* Super speed support */
 static struct usb_endpoint_descriptor rmnet_ss_notify_desc  = {
@@ -1065,6 +1105,9 @@ static int frmnet_bind(struct usb_configuration *c, struct usb_function *f)
 	struct usb_ep			*ep;
 	struct usb_composite_dev	*cdev = c->cdev;
 	int				ret = -ENODEV;
+#ifdef CONFIG_PANTECH_ANDROID_USB
+	ushort vid;
+#endif
 	pr_debug("%s: start binding\n", __func__);
 	dev->ifc_id = usb_interface_id(c, f);
 	if (dev->ifc_id < 0) {
@@ -1117,8 +1160,19 @@ static int frmnet_bind(struct usb_configuration *c, struct usb_function *f)
 	dev->notify_req->complete = frmnet_notify_complete;
 	dev->notify_req->context = dev;
 
+#ifdef CONFIG_PANTECH_ANDROID_USB
+	vid = getVendorID();
+	if (vid == 0x05C6) {
+		//printk("^^^^ It's Qualcomm rmnet\n");
+		f->fs_descriptors = usb_copy_descriptors(rmnet_fs_function);
+	} else {
+		//printk("^^^^ It's SKY rmnet\n");
+		f->fs_descriptors = usb_copy_descriptors(pantech_rmnet_fs_function);
+	}
+#else
 	ret = -ENOMEM;
 	f->fs_descriptors = usb_copy_descriptors(rmnet_fs_function);
+#endif
 
 	if (!f->fs_descriptors) {
 		pr_err("%s: no descriptors,usb_copy descriptors(fs)failed\n",
@@ -1134,7 +1188,17 @@ static int frmnet_bind(struct usb_configuration *c, struct usb_function *f)
 				rmnet_fs_notify_desc.bEndpointAddress;
 
 		/* copy descriptors, and track endpoint copies */
+#ifdef CONFIG_PANTECH_ANDROID_USB
+		if (vid == 0x05C6) {
+			//printk("^^^^ It's Qualcomm rmnet\n");
+			f->hs_descriptors = usb_copy_descriptors(rmnet_hs_function);
+		} else {
+			//printk("^^^^ It's SKY rmnet\n");
+			f->hs_descriptors = usb_copy_descriptors(pantech_rmnet_hs_function);
+		}
+#else
 		f->hs_descriptors = usb_copy_descriptors(rmnet_hs_function);
+#endif
 
 		if (!f->hs_descriptors) {
 			pr_err("%s: no hs_descriptors,usb_copy descriptors(hs)failed\n",

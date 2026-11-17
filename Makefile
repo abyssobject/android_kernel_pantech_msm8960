@@ -371,8 +371,6 @@ LINUXINCLUDE    := \
 		-Iinclude \
 		$(USERINCLUDE)
 
-LINUXINCLUDE += -I$(srctree)/include/pantech
-
 KBUILD_CPPFLAGS := -D__KERNEL__
 
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
@@ -380,10 +378,9 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks
-# PANTECH_KERNEL_FLAGS
-PANTECH_BUILD_SYSTEM := $(srctree)/include/pantech
-include $(PANTECH_BUILD_SYSTEM)/pantech_config.mk
-KBUILD_CFLAGS += $(PANTECH_KERNEL_FLAGS)
+
+#// 20120105, albatros, imei ÁÖ¼Ò°ªÀÇ °ø¿ëÀ¸·Î »ç¿ëÀ» À§ÇØ¼­
+LINUXINCLUDE += -I$(srctree)/include/pantech
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
@@ -391,6 +388,15 @@ KBUILD_AFLAGS   := -D__ASSEMBLY__
 KBUILD_AFLAGS_MODULE  := -DMODULE
 KBUILD_CFLAGS_MODULE  := -DMODULE
 KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
+
+
+######################################################################
+# PANTECH_KERNEL_FLAGS
+######################################################################
+
+PANTECH_BUILD_SYSTEM := $(srctree)/include/pantech
+include $(PANTECH_BUILD_SYSTEM)/pantech_config.mk
+KBUILD_CFLAGS += $(PANTECH_KERNEL_FLAGS)
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
 KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)

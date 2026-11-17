@@ -1715,8 +1715,7 @@ static int voice_config_cvs_vocoder(struct voice_data *v)
 	switch (common.mvs_info.media_type) {
 	case VSS_MEDIA_ID_EVRC_MODEM:
 	case VSS_MEDIA_ID_4GV_NB_MODEM:
-	case VSS_MEDIA_ID_4GV_WB_MODEM:
-	case VSS_MEDIA_ID_4GV_NW_MODEM: {
+	case VSS_MEDIA_ID_4GV_WB_MODEM: {
 		struct cvs_set_cdma_enc_minmax_rate_cmd cvs_set_cdma_rate;
 
 		pr_debug("Setting EVRC min-max rate\n");
@@ -2011,6 +2010,17 @@ static int voice_send_set_device_cmd(struct voice_data *v)
 
 	voc_get_tx_rx_topology(v, &cvp_setdev_cmd.cvp_set_device.tx_topology_id,
 			       &cvp_setdev_cmd.cvp_set_device.rx_topology_id);
+#if QVOICE
+	if (!qvoice_disabled()) {
+		cvp_setdev_cmd.cvp_set_device.tx_topology_id =
+					get_qvoice_tx_topology();
+		if (cvp_setdev_cmd.cvp_set_device.tx_topology_id == 0)
+			cvp_setdev_cmd.cvp_set_device.tx_topology_id =
+				VSS_IVOCPROC_TOPOLOGY_ID_TX_SM_ECNS;
+	}
+	printk(KERN_DEBUG "voice_send_set_device_cmd: topology = %08x",
+		cvp_setdev_cmd.cvp_set_device.tx_topology_id);
+#endif
 
 	cvp_setdev_cmd.cvp_set_device.tx_port_id = v->dev_tx.port_id;
 	cvp_setdev_cmd.cvp_set_device.rx_port_id = v->dev_rx.port_id;
@@ -2608,7 +2618,13 @@ int voice_unmap_cal_blocks(void)
 			/* deregister cvp and vol cal */
 			voice_send_cvp_deregister_vol_cal_table_cmd(v);
 			voice_send_cvp_deregister_cal_cmd(v);
-			voice_send_cvp_unmap_memory_cmd(v);
+			{
+				/* 3.10: the cal block is unmapped by address */
+				uint32_t paddr;
+
+				if (!voice_get_cal_paddr_size(v, &paddr, NULL))
+					voice_send_cvp_unmap_memory_cmd(v, paddr);
+			}
 
 			/* deregister cvs cal */
 			voice_send_cvs_deregister_cal_cmd(v);
@@ -3190,6 +3206,17 @@ static int voice_setup_vocproc(struct voice_data *v)
 
 	voc_get_tx_rx_topology(v, &cvp_session_cmd.cvp_session.tx_topology_id,
 			       &cvp_session_cmd.cvp_session.rx_topology_id);
+#if QVOICE
+	if (!qvoice_disabled()) {
+		cvp_session_cmd.cvp_session.tx_topology_id =
+					get_qvoice_tx_topology();
+		if (cvp_session_cmd.cvp_session.tx_topology_id == 0)
+			cvp_session_cmd.cvp_session.tx_topology_id =
+				VSS_IVOCPROC_TOPOLOGY_ID_TX_SM_ECNS;
+	}
+	printk(KERN_DEBUG "voice_setup_vocproc: topology = %08x",
+		cvp_session_cmd.cvp_session.tx_topology_id);
+#endif
 
 	cvp_session_cmd.cvp_session.direction = 2; /*tx and rx*/
 	cvp_session_cmd.cvp_session.network_id = VSS_NETWORK_ID_DEFAULT;
@@ -5283,6 +5310,23 @@ static int32_t qdsp_cvp_callback(struct apr_client_data *data, void *priv)
 				c->hostpcm_info.private_data);
 		}
 	}
+#if QVOICE
+	else if (data->opcode == APR_RSP_ACCEPTED) {
+		int index;
+		ptr = data->payload;
+		index = find(ptr[0], CmdTable, sizeof_array(CmdTable));
+		if (index>=0) {
+			printk(KERN_DEBUG "APR_RSP_ACCEPTED, payload size = %d, opcode = %s", data->payload_size, CmdStrings[index]);
+		}
+		else {
+			printk(KERN_DEBUG "APR_RSP_ACCEPTED, payload size = %d, opcode = %x", data->payload_size, ptr[0]);
+		}
+	}
+	else {
+		printk(KERN_DEBUG "cvp_callback opcode = %x", data->opcode);
+	}
+#endif
+
 	return 0;
 }
 
@@ -5391,22 +5435,6 @@ int voc_send_cvp_stop_vocpcm(u16 session_id)
 		pr_err("%s: wait_event timeout\n", __func__);
 		goto fail;
 	}
-#if QVOICE
-	else if (data->opcode == APR_RSP_ACCEPTED) {
-		int index;
-		ptr = data->payload;
-		index = find(ptr[0], CmdTable, sizeof_array(CmdTable));
-		if (index>=0) {
-			printk(KERN_DEBUG "APR_RSP_ACCEPTED, payload size = %d, opcode = %s", data->payload_size, CmdStrings[index]);
-		}
-		else {
-			printk(KERN_DEBUG "APR_RSP_ACCEPTED, payload size = %d, opcode = %x", data->payload_size, ptr[0]);
-		}
-	}
-	else {
-		printk(KERN_DEBUG "cvp_callback opcode = %x", data->opcode);
-	}
-#endif
 	return 0;
 fail:
 	return -EINVAL;

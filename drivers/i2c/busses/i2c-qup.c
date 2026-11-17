@@ -34,9 +34,9 @@
 #include <linux/gpio.h>
 #include <linux/of.h>
 #include <linux/of_i2c.h>
-//#ifdef CONFIG_PIEZO
-//#include <linux/ti_drv2665.h>
-//#endif
+#ifdef CONFIG_PIEZO
+#include <linux/ti_drv2665.h>
+#endif
 #include <linux/of_gpio.h>
 #include <mach/board.h>
 #include <mach/gpiomux.h>
@@ -203,19 +203,19 @@ struct qup_i2c_dev {
 	void                         *complete;
 	int                          i2c_gpios[ARRAY_SIZE(i2c_rsrcs)];
 #ifdef CONFIG_PIEZO
-	// IMMR
-	int				sent_cnt;
+	//p16619 piezo
+	//int				sent_cnt;
 #endif
 
 	struct qup_i2c_clk_path_vote clk_path_vote;
 };
 #ifdef CONFIG_PIEZO
-//static int sent_cnt=0;
+static int sent_cnt=0;
 //p16619 piezo
-//int get_lastPacket(void){
-//    return sent_cnt;
-//}
-//EXPORT_SYMBOL(get_lastPacket);
+int get_lastPacket(void) {
+	return sent_cnt;
+}
+EXPORT_SYMBOL(get_lastPacket);
 #endif
 
 #ifdef DEBUG
@@ -241,7 +241,8 @@ qup_i2c_interrupt(int irq, void *devid)
 {
 	struct qup_i2c_dev *dev = devid;
 #ifdef CONFIG_PIEZO
-	uint32_t mx_cnt_cr = readl_relaxed(dev->base + QUP_MX_OUTPUT_COUNT_CURRENT);	
+	//p16619 piezo
+	uint32_t mx_cnt_cr = 0;
 #endif
 	uint32_t status = 0;
 	uint32_t status1 = 0;
@@ -267,12 +268,15 @@ qup_i2c_interrupt(int irq, void *devid)
 
 	if (status & I2C_STATUS_ERROR_MASK) {
 #ifdef CONFIG_PIEZO
-		//IMMR
-		dev->sent_cnt = mx_cnt_cr;
-		if((status & 0xF0000) == 0x30000) dev->sent_cnt += 1;
-		if(dev->sent_cnt > 6) dev->sent_cnt -= 1;
-	       if(dev->sent_cnt > 13) dev->sent_cnt -= 1;	      
-//		if(dev->sent_cnt > 20) dev->sent_cnt -= 1;
+		//p16619 piezo
+		mx_cnt_cr = readl_relaxed(dev->base + QUP_MX_OUTPUT_COUNT_CURRENT);
+		sent_cnt = mx_cnt_cr;
+		if ((status & 0xF0000) == 0x30000)
+			sent_cnt += 1;
+		if (sent_cnt > 6)
+			sent_cnt -= 1;
+		if (sent_cnt > 13)
+			sent_cnt -= 1;
 #else /* QCOM Original */
 		dev_err(dev->dev, "QUP: I2C status flags :0x%x, irq:%d\n",
 			status, irq);
@@ -986,8 +990,8 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 	mutex_lock(&dev->mlock);
 
 #ifdef CONFIG_PIEZO
-// IMMR
-	dev->sent_cnt = 0;
+	//p16619 piezo
+	sent_cnt = 0;
 #endif
 	if (dev->suspended) {
 		mutex_unlock(&dev->mlock);

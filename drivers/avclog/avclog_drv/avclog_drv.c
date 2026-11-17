@@ -253,7 +253,7 @@ int avclog_write(unsigned int err, const char *format, ...)
 
 static int avclog_mmap(struct file *file, struct vm_area_struct *vma)
 {
-	vma->vm_flags |= VM_RESERVED;
+	vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP;
 	vma->vm_flags |= VM_IO;
 
 	print_avclog_function(__func__);

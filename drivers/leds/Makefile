@@ -21,12 +21,9 @@ obj-$(CONFIG_LEDS_COBALT_RAQ)		+= leds-cobalt-raq.o
 obj-$(CONFIG_LEDS_SUNFIRE)		+= leds-sunfire.o
 obj-$(CONFIG_LEDS_PCA9532)		+= leds-pca9532.o
 ifeq ($(CONFIG_PANTECH_LED_BLINK_CONTROL),y)
-else
-ifdef CONFIG_CUST_PANTECH_H
 obj-$(CONFIG_LEDS_PM8XXX)		+= leds-pm8064.o
 else
 obj-$(CONFIG_LEDS_PM8XXX)		+= leds-pm8xxx.o
-endif
 endif
 obj-$(CONFIG_LEDS_QPNP)			+= leds-qpnp.o
 obj-$(CONFIG_LEDS_GPIO_REGISTER)	+= leds-gpio-register.o

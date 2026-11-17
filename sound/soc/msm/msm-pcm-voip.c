@@ -57,7 +57,6 @@
 #define MODE_AMR		0x5
 #define MODE_AMR_WB		0xD
 #define MODE_PCM		0xC
-#define MODE_4GV_NW		0xE
 #define MODE_G711		0xA
 #define MODE_G711A		0xF
 
@@ -365,8 +364,7 @@ static void voip_process_ul_pkt(uint8_t *voc_pkt,
 		}
 		case MODE_IS127:
 		case MODE_4GV_NB:
-		case MODE_4GV_WB:
-		case MODE_4GV_NW: {
+		case MODE_4GV_WB: {
 			/* Remove the DSP frame info header.
 			 * Header format:
 			 * Bits 0-3: frame rate
@@ -527,8 +525,7 @@ static void voip_process_dl_pkt(uint8_t *voc_pkt,
 		}
 		case MODE_IS127:
 		case MODE_4GV_NB:
-		case MODE_4GV_WB:
-		case MODE_4GV_NW: {
+		case MODE_4GV_WB: {
 			/* Add the DSP frame info header. Header format:
 			 * Bits 0-3 : Frame rate
 			*/
@@ -825,12 +822,6 @@ static int msm_pcm_playback_copy(struct snd_pcm_substream *substream, int a,
 				ret = copy_from_user(&buf_node->frame,
 							buf, count);
 
-			if (ret) {
-				pr_err("%s: copy from user failed %d\n",
-				       __func__, ret);
-				return -EFAULT;
-			}
-
 #ifdef FEATURE_PANTECH_SND_PCM_KERNEL_DUMP //20120810 jhsong : kernel voip dump
 			voip_write_file("/data/rx_dump_kernel.pcm", &buf_node->frame.voc_pkt, count);
 #endif
@@ -1121,7 +1112,7 @@ static int msm_pcm_prepare(struct snd_pcm_substream *substream)
 		 ((prtd->mode == MODE_AMR) || (prtd->mode == MODE_AMR_WB) ||
 		 (prtd->mode == MODE_IS127) || (prtd->mode == MODE_4GV_NB) ||
 		 (prtd->mode == MODE_4GV_WB) || (prtd->mode == MODE_G711) ||
-		 (prtd->mode == MODE_G711A) || (prtd->mode == MODE_4GV_NW))) {
+		 (prtd->mode == MODE_G711A))) {
 		pr_err("mode:%d and format:%u are not mached\n",
 			prtd->mode, (uint32_t)runtime->format);
 		ret =  -EINVAL;
@@ -1410,23 +1401,6 @@ static int voip_get_rate_type(uint32_t mode, uint32_t rate,
 		}
 		break;
 	}
-	case MODE_4GV_NW: {
-		switch (rate) {
-		case VOC_0_RATE:
-		case VOC_8_RATE:
-		case VOC_4_RATE:
-		case VOC_2_RATE:
-		case VOC_1_RATE:
-		case VOC_8_RATE_NC:
-			*rate_type = rate;
-			break;
-		default:
-			pr_err("wrong rate for 4GV_NW.\n");
-			ret = -EINVAL;
-			break;
-		}
-		break;
-	}
 	case MODE_G711:
 	case MODE_G711A:
 		*rate_type = rate;
@@ -1469,9 +1443,6 @@ static int voip_get_media_type(uint32_t mode, uint32_t rate_type,
 		break;
 	case MODE_4GV_WB: /* EVRC-WB */
 		*media_type = VSS_MEDIA_ID_4GV_WB_MODEM;
-		break;
-	case MODE_4GV_NW: /* EVRC-NW */
-		*media_type = VSS_MEDIA_ID_4GV_NW_MODEM;
 		break;
 	case MODE_G711:
 	case MODE_G711A:

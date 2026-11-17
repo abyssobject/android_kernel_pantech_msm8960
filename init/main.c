@@ -141,7 +141,6 @@ unsigned int pantech_charging_status(void)
 }
 EXPORT_SYMBOL(pantech_charging_status);
 #endif
-
 /*
  * If set, this is an indication to the drivers that reset the underlying
  * device before going ahead with the initialization otherwise driver might
@@ -524,12 +523,12 @@ asmlinkage void __init start_kernel(void)
 	parse_args("Booting kernel", static_command_line, __start___param,
 		   __stop___param - __start___param,
 		   -1, -1, &unknown_bootoption);
+
 #ifdef CONFIG_PANTECH_SMB347_CHARGER
 	if (strstr(boot_command_line,"androidboot.mode=charger")) {
 		battchg_pause_offline = 1;
 	}
 #endif
-
 	jump_label_init();
 
 	/*

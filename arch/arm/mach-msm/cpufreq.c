@@ -276,10 +276,6 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 	policy->min = CONFIG_MSM_CPU_FREQ_MIN;
 	policy->max = CONFIG_MSM_CPU_FREQ_MAX;
 #endif
-#ifdef CONFIG_EF52_CPU_OC
-	if (policy->max > 1728000)
-		policy->max = 1728000;
-#endif
 
 	if (is_clk)
 		cur_freq = clk_get_rate(cpu_clk[policy->cpu])/1000;

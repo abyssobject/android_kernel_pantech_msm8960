@@ -880,7 +880,7 @@ void mdp_vsync_clk_enable(void);
 #endif
 
 #ifdef CONFIG_DEBUG_FS
-#ifdef CONFIG_MDP_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 int mdp_debugfs_init(void);
 #else
 static inline int mdp_debugfs_init(void) { return 0; }

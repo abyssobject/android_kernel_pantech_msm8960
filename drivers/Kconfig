@@ -172,9 +172,13 @@ source "drivers/ipack/Kconfig"
 
 source "drivers/gud/Kconfig"
 
+source "drivers/dmb/Kconfig"
+
 source "drivers/reset/Kconfig"
 
 source "drivers/coresight/Kconfig"
+
+source "drivers/avclog/Kconfig"
 
 source "drivers/bif/Kconfig"
 

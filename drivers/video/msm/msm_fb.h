@@ -48,9 +48,15 @@
 #include "mdp.h"
 /*20121116, kkcho,  need only sharp-ips for LCD-Flicker and burning*/
 #if defined(CONFIG_MACH_APQ8064_EF48S) || defined(CONFIG_MACH_APQ8064_EF49K) || defined(CONFIG_MACH_APQ8064_EF50L) || defined(CONFIG_MACH_APQ8064_EF51S) || defined(CONFIG_MACH_APQ8064_EF51K) || defined(CONFIG_MACH_APQ8064_EF51L)
-#define FEATURE_SKYDISP_DISPLAY_FLICKER_SHARP_IPS
+#define FEATURE_SKYDISP_DISPLAY_FLICKER_SHARP_IPS 
 #endif
 #define BOOT_TOUCH_RESET
+/* 130124, Get LCD Revision(2 or 3).
+ * CONFIG_PANTECH_LCD_GET_LCD_REV is defined in below files.
+ * kernel/drivers/video/msm/msm_fb.h
+ * kernel/include/linux/msm_mdp.h
+ * vendor/pantech/build/CUST_PANTECH_DISPLAY.h
+ */
 #if (defined(CONFIG_SKY_EF51S_BOARD)||defined(CONFIG_SKY_EF51K_BOARD)||defined(CONFIG_SKY_EF51L_BOARD))
 #define CONFIG_PANTECH_LCD_GET_LCD_REV
 #endif
@@ -225,7 +231,7 @@ struct msm_fb_data_type {
 	void *msm_fb_backup;
 #ifdef CONFIG_F_SKYDISP_SKIP_BLSET_WITH_EFS_ERASE
 	int bl_set_first_skip;
-#endif
+#endif	
 };
 struct msm_fb_backup_type {
 	struct fb_info info;

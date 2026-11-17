@@ -28,12 +28,12 @@ extern uint32 mdp4_extn_disp;
 extern char *mmss_cc_base;	/* mutimedia sub system clock control */
 extern spinlock_t dsi_clk_lock;
 extern u32 mdp_max_clk;
-#ifdef CONFIG_MDP_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 extern u32 dbg_force_ov0_blt;
 #else
 #define dbg_force_ov0_blt 0
 #endif
-#ifdef CONFIG_MDP_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 extern u32 dbg_force_ov1_blt;
 #else
 #define dbg_force_ov1_blt 0

@@ -26,6 +26,38 @@
 #include "../../../../sound/soc/msm/qdsp6/q6voice.h"
 #endif
 
+#if 1 // SR 1340074 Subject: [PATCH] ASoC: msm: Unmap ACDB memory with Q6 on ACDB close
+static int unmap_cal_tables(void)
+{
+	int	result = 0;
+	int     result2 = 0;
+
+	pr_debug("%s\n", __func__);
+	result2 = adm_unmap_cal_blocks();
+	if (result2 < 0) {
+		pr_err("%s: adm_unmap_cal_blocks failed, err = %d\n",
+				__func__, result2);
+		result = result2;
+	}
+
+	result2 = afe_unmap_cal_blocks();
+	if (result2 < 0) {
+		pr_err("%s: afe_unmap_cal_blocks failed, err = %d\n",
+				__func__, result2);
+		result = result2;
+	}
+
+	result2 = voice_unmap_cal_blocks();
+	if (result2 < 0) {
+		pr_err("%s: voice_unmap_cal_blocks failed, err = %d\n",
+				__func__, result2);
+		result = result2;
+	}
+	pr_debug("%s going out after freeign memory\n", __func__);
+	return result;
+}
+#endif
+
 
 #define MAX_NETWORKS			15
 #define MAX_IOCTL_DATA			(MAX_NETWORKS * 2)

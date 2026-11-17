@@ -49,6 +49,12 @@
 #include <linux/uaccess.h>
 #include <linux/bug.h>
 
+#if defined(CONFIG_PANTECH_DEBUG)
+#ifdef CONFIG_PANTECH_DEBUG_SCHED_LOG  //p14291_pantech_dbg
+#include <mach/pantech_debug.h> 
+#endif
+#endif
+
 #include "workqueue_internal.h"
 
 enum {
@@ -2150,6 +2156,13 @@ __acquires(&pool->lock)
 	 */
 	if (unlikely(cpu_intensive))
 		worker_set_flags(worker, WORKER_CPU_INTENSIVE, true);
+
+#if defined(CONFIG_PANTECH_DEBUG)
+#ifdef CONFIG_PANTECH_DEBUG_SCHED_LOG  //p14291_121102
+	if(pantech_debug_enable)
+		pantechdbg_sched_msg("@%pS", worker->current_func);
+#endif
+#endif
 
 	/*
 	 * Unbound pool isn't concurrency managed and work items should be
