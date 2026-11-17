@@ -53,7 +53,6 @@
 
 #if 1 // P11220_pmic_irq_handler
 #include <linux/reboot.h>
-#include <mach/system.h>
 #endif
 
 #ifdef CONFIG_SKY_SND_DOCKING_CRADLE   //20120521 jhsong : report docking speaker event
@@ -2206,6 +2205,31 @@ static int proc_debug_pm_chg_get_HW_RevID(char *page, char **start, off_t offset
     return sprintf(page, "%d\n", adc);
 }
 
+/* 3.10 has no read_proc: run the old style handler once per read from offset 0 */
+static ssize_t smb347_hw_rev_read(struct file *file, char __user *buf,
+				  size_t count, loff_t *ppos)
+{
+	char *page, *start = NULL;
+	int eof = 0, n;
+	ssize_t ret;
+
+	if (*ppos)
+		return 0;
+	page = (char *)__get_free_page(GFP_KERNEL);
+	if (!page)
+		return -ENOMEM;
+	n = proc_debug_pm_chg_get_HW_RevID(page, &start, 0, PAGE_SIZE, &eof, NULL);
+	ret = n > 0 ? simple_read_from_buffer(buf, count, ppos, page, n) : n;
+	free_page((unsigned long)page);
+	return ret;
+}
+
+static const struct file_operations smb347_hw_rev_fops = {
+	.owner	= THIS_MODULE,
+	.read	= smb347_hw_rev_read,
+	.llseek	= default_llseek,
+};
+
 static void create_testmenu_entries(struct smb347_chg_chip *chip)
 {
  	struct proc_dir_entry *ent;
@@ -2218,11 +2242,9 @@ static void create_testmenu_entries(struct smb347_chg_chip *chip)
 		pr_err("Unable to create /proc/%s directory\n", CHARGER_DEV_NAME);
 	}
 
-	ent = create_proc_entry("hw_rev", 0, pm8921_charger_dir);
-	if (ent == NULL) 
+	ent = proc_create("hw_rev", 0, pm8921_charger_dir, &smb347_hw_rev_fops);
+	if (ent == NULL)
 		pr_err("Unable to create /proc/smb347_charger/hw_rev entry\n");
-	
-	ent->read_proc = proc_debug_pm_chg_get_HW_RevID;
 }
 #endif
 

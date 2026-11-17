@@ -1,4 +1,8 @@
 #include <linux/slab.h>
+#include <linux/uaccess.h>
+#include <linux/module.h>
+#include <linux/gfp.h>
+#include <linux/fs.h>
 #include <linux/proc_fs.h>
 
 #if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_RMI4_PANTECH)
@@ -237,17 +241,50 @@ void printp(const char *fmt, ...) {
 	spin_unlock(&cb_spinlock);
 }
 
+/*
+ * 3.10 has no read_proc. Each read() from offset 0 runs the old style
+ * handler once on a page and returns what it produced.
+ */
+typedef int (touch_read_proc_t)(char *page, char **start, off_t off,
+				int count, int *eof, void *data);
+
+static ssize_t touch_proc_read(struct file *file, char __user *buf,
+			       size_t count, loff_t *ppos)
+{
+	touch_read_proc_t *fn = PDE_DATA(file_inode(file));
+	char *page, *start = NULL;
+	int eof = 0, n;
+	ssize_t ret;
+
+	if (*ppos)
+		return 0;
+	page = (char *)__get_free_page(GFP_KERNEL);
+	if (!page)
+		return -ENOMEM;
+	n = fn(page, &start, 0, PAGE_SIZE, &eof, NULL);
+	ret = n > 0 ? simple_read_from_buffer(buf, count, ppos, page, n) : n;
+	free_page((unsigned long)page);
+	return ret;
+}
+
+static const struct file_operations touch_proc_fops = {
+	.owner	= THIS_MODULE,
+	.read	= touch_proc_read,
+	.llseek	= default_llseek,
+};
+
 void init_proc(void) { 
 	int testBufferSize = 1024;
 
 	struct proc_dir_entry *touch_log_ent;
 	struct proc_dir_entry *touch_info_ent;
 	
-	touch_log_ent = create_proc_entry("touchlog", S_IFREG|S_IRUGO, 0); 
-	touch_log_ent->read_proc = read_log;
-	
-	touch_info_ent = create_proc_entry("touchinfo", S_IFREG|S_IRUGO, 0); 
-	touch_info_ent->read_proc = read_touch_info;
+	touch_log_ent = proc_create_data("touchlog", S_IFREG|S_IRUGO, NULL,
+					 &touch_proc_fops, read_log);
+	touch_info_ent = proc_create_data("touchinfo", S_IFREG|S_IRUGO, NULL,
+					  &touch_proc_fops, read_touch_info);
+	if (!touch_log_ent || !touch_info_ent)
+		pr_err("%s: cannot create proc entries\n", __func__);
 
 	spin_lock_init(&cb_spinlock);
 	cbInit(&cb, testBufferSize);
