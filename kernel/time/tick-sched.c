@@ -724,10 +724,13 @@ static bool can_stop_idle_tick(int cpu, struct tick_sched *ts)
 		return false;
 	}
 
-	if (unlikely(ts->nohz_mode == NOHZ_MODE_INACTIVE)) {
-		ts->sleep_length = (ktime_t) { .tv64 = NSEC_PER_SEC/HZ };
+	/*
+	 * CAF: tick_sched has no cached sleep_length (it is recalculated in
+	 * tick_nohz_get_sleep_length()), so only the early return of the
+	 * 3.10.45 change applies here.
+	 */
+	if (unlikely(ts->nohz_mode == NOHZ_MODE_INACTIVE))
 		return false;
-	}
 
 	if (need_resched())
 		return false;
