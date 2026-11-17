@@ -587,7 +587,7 @@ pm8038_add_subdevices(const struct pm8038_platform_data *pdata,
 		}
 	}
 
-	ret = mfd_add_devices(pmic->dev, 0, &pwm_cell, 1, NULL, 0);
+	ret = mfd_add_devices(pmic->dev, 0, &pwm_cell, 1, NULL, 0, NULL);
 	if (ret) {
 		pr_err("Failed to add pwm subdevice ret=%d\n", ret);
 		goto bail;
@@ -607,7 +607,7 @@ pm8038_add_subdevices(const struct pm8038_platform_data *pdata,
 	if (pdata->leds_pdata) {
 		leds_cell.platform_data = pdata->leds_pdata;
 		leds_cell.pdata_size = sizeof(struct pm8xxx_led_platform_data);
-		ret = mfd_add_devices(pmic->dev, 0, &leds_cell, 1, NULL, 0);
+		ret = mfd_add_devices(pmic->dev, 0, &leds_cell, 1, NULL, 0, NULL);
 		if (ret) {
 			pr_err("Failed to add leds subdevice ret=%d\n", ret);
 			goto bail;
@@ -618,7 +618,7 @@ pm8038_add_subdevices(const struct pm8038_platform_data *pdata,
 		vibrator_cell.platform_data = pdata->vibrator_pdata;
 		vibrator_cell.pdata_size =
 			sizeof(struct pm8xxx_vibrator_platform_data);
-		ret = mfd_add_devices(pmic->dev, 0, &vibrator_cell, 1, NULL, 0);
+		ret = mfd_add_devices(pmic->dev, 0, &vibrator_cell, 1, NULL, 0, NULL);
 		if (ret) {
 			pr_err("Failed to add vibrator ret=%d\n", ret);
 			goto bail;
@@ -628,7 +628,7 @@ pm8038_add_subdevices(const struct pm8038_platform_data *pdata,
 	if (pdata->spk_pdata) {
 		spk_cell.platform_data = pdata->spk_pdata;
 		spk_cell.pdata_size = sizeof(struct pm8xxx_spk_platform_data);
-		ret = mfd_add_devices(pmic->dev, 0, &spk_cell, 1, NULL, 0);
+		ret = mfd_add_devices(pmic->dev, 0, &spk_cell, 1, NULL, 0, NULL);
 		if (ret) {
 			pr_err("Failed to add spk subdevice ret=%d\n", ret);
 			goto bail;
