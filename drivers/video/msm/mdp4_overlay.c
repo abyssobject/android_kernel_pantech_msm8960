@@ -802,6 +802,27 @@ static void mdp4_overlay_vg_get_src_offset(struct mdp4_overlay_pipe *pipe,
 	}
 }
 
+#ifdef CONFIG_PANTECH_LCD_SHARPNESS_CTRL
+unsigned int sharpness_count = 0;
+void sharpness_control(struct msm_fb_data_type *mfd, int count)
+{
+	sharpness_count = count;
+	pr_debug("[kkCHO_DEBUG] *************** count = %d\n",count);
+}
+
+uint32_t ps_table_value(int8_t value)
+{
+	uint32_t out = 0x0;
+	int8_t level = value;
+	uint32_t mask = 0xffffffff;
+	out = 0x88888888;
+
+	out += (0x11111111 * level);
+	out &= mask;
+
+	return out;
+}
+#endif
 void mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 {
 	char *vg_base;
@@ -936,6 +957,20 @@ void mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 		outpdw(vg_base + 0x0068,
 			pipe->r_bit << 4 | pipe->b_bit << 2 | pipe->g_bit);
 	}
+
+#ifdef CONFIG_PANTECH_LCD_SHARPNESS_CTRL
+	if (sharpness_count >= 1)
+	{
+		pr_debug("[kkCHO_DEBUG] + sharpness_count_set *************** sharpness_count = %d\n",sharpness_count);
+		outpdw(vg_base + 0x8200, ps_table_value(sharpness_count));
+		outpdw(vg_base + 0x8204, ps_table_value(sharpness_count));	
+		pr_debug("[kkCHO_DEBUG] - sharpness_count_set *************** sharpness_count = %d\n",sharpness_count);
+	}
+	else{
+		outpdw(vg_base + 0x8200, 0);
+		outpdw(vg_base + 0x8204, 0);	
+	}
+#endif
 
 	if (mdp_rev > MDP_REV_41) {
 		/* mdp chip select controller */
@@ -2741,7 +2776,11 @@ static int mdp4_calc_pipe_mdp_clk(struct msm_fb_data_type *mfd,
 	    (pipe->src_h != pipe->dst_h) &&
 	    (mfd->panel_info.lcdc.v_back_porch)) {
 		u32 clk = 0;
+#ifdef CONFIG_F_SKYDISP_UPSCALING_UNDERRUN
+		clk = 6 * (pclk >> shift) / mfd->panel_info.lcdc.v_back_porch;
+#else		
 		clk = 4 * (pclk >> shift) / mfd->panel_info.lcdc.v_back_porch;
+#endif		
 		clk <<= shift;
 		pr_debug("%s: mdp clk rate %d based on low vbp %d\n",
 			 __func__, clk, mfd->panel_info.lcdc.v_back_porch);

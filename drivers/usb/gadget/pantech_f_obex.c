@@ -890,7 +890,7 @@ static int pantech_obex_bind_config(struct usb_configuration *c)
 	}
 
   dev->function.name = "obex";
-  dev->function.descriptors = pantech_fs_obex_descs;
+  dev->function.fs_descriptors = pantech_fs_obex_descs;
   dev->function.hs_descriptors = pantech_hs_obex_descs;
   dev->function.bind = pantech_obex_function_bind;
   dev->function.unbind = pantech_obex_function_unbind;
