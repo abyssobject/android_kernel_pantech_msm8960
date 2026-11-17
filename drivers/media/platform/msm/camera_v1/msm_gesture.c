@@ -43,7 +43,7 @@ int msm_gesture_subscribe_event(struct v4l2_subdev *sd, struct v4l2_fh *fh,
 	D("%s\n", __func__);
 	if (sub->type == V4L2_EVENT_ALL)
 		sub->type = MSM_GES_APP_NOTIFY_EVENT;
-	return v4l2_event_subscribe(fh, sub, 30);
+	return v4l2_event_subscribe(fh, sub, 30, NULL);
 }
 
 static int msm_gesture_send_ctrl(struct msm_gesture_ctrl *p_gesture_ctrl,

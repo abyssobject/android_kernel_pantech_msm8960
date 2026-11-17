@@ -12,6 +12,7 @@
  */
 
 #define pr_fmt(fmt)	"%s: " fmt, __func__
+#include <linux/wakelock.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/platform_device.h>

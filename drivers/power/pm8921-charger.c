@@ -32,7 +32,7 @@
 #include <linux/ratelimit.h>
 
 #include <mach/msm_xo.h>
-#include <mach/msm_hsusb.h>
+#include <linux/usb/msm_hsusb.h>
 
 #define CHG_BUCK_CLOCK_CTRL	0x14
 #define CHG_BUCK_CLOCK_CTRL_8038	0xD

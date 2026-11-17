@@ -958,7 +958,7 @@ int msm_vpe_subdev_subscribe_event(struct v4l2_subdev *sd, struct v4l2_fh *fh,
 	struct v4l2_event_subscription *sub)
 {
 	D("%s E\n", __func__);
-	return v4l2_event_subscribe(fh, sub, VPE_SUBDEV_MAX_EVENTS);
+	return v4l2_event_subscribe(fh, sub, VPE_SUBDEV_MAX_EVENTS, NULL);
 }
 
 int msm_vpe_subdev_unsubscribe_event(struct v4l2_subdev *sd, struct v4l2_fh *fh,
