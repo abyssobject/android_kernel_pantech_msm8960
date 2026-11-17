@@ -658,10 +658,11 @@ unsigned long arch_randomize_brk(struct mm_struct *mm)
 }
 
 #ifdef CONFIG_MMU
+#ifdef CONFIG_KUSER_HELPERS
 /*
  * The vectors page is always readable from user space for the
- * atomic helpers and the signal restart code. Insert it into the
- * gate_vma so that it is visible through ptrace and /proc/<pid>/mem.
+ * atomic helpers. Insert it into the gate_vma so that it is visible
+ * through ptrace and /proc/<pid>/mem.
  */
 static struct vm_area_struct gate_vma = {
 	.vm_start	= 0xffff0000,

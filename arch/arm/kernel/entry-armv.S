@@ -741,6 +741,18 @@ ENDPROC(__switch_to)
 #endif
 	.endm
 
+	.macro	kuser_pad, sym, size
+	.if	(. - \sym) & 3
+	.rept	4 - (. - \sym) & 3
+	.byte	0
+	.endr
+	.endif
+	.rept	(\size - (. - \sym)) / 4
+	.word	0xe7fddef1
+	.endr
+	.endm
+
+#ifdef CONFIG_KUSER_HELPERS
 	.align	5
 	.globl	__kuser_helper_start
 __kuser_helper_start:
@@ -922,18 +934,13 @@ kuser_cmpxchg64_fixup:
 #error "incoherent kernel configuration"
 #endif
 
-	/* pad to next slot */
-	.rept	(16 - (. - __kuser_cmpxchg64)/4)
-	.word	0
-	.endr
-
-	.align	5
+	kuser_pad __kuser_cmpxchg64, 64
 
 __kuser_memory_barrier:				@ 0xffff0fa0
 	smp_dmb	arm
 	usr_ret	lr
 
-	.align	5
+	kuser_pad __kuser_memory_barrier, 32
 
 __kuser_cmpxchg:				@ 0xffff0fc0
 
@@ -1006,13 +1013,14 @@ kuser_cmpxchg32_fixup:
 
 #endif
 
-	.align	5
+	kuser_pad __kuser_cmpxchg, 32
 
 __kuser_get_tls:				@ 0xffff0fe0
 	ldr	r0, [pc, #(16 - 8)]	@ read TLS, set in kuser_get_tls_init
 	usr_ret	lr
 	mrc	p15, 0, r0, c13, c0, 3	@ 0xffff0fe8 hardware TLS code
-	.rep	4
+	kuser_pad __kuser_get_tls, 16
+	.rep	3
 	.word	0			@ 0xffff0ff0 software TLS value, then
 	.endr				@ pad up to __kuser_helper_version
 
@@ -1022,14 +1030,16 @@ __kuser_helper_version:				@ 0xffff0ffc
 	.globl	__kuser_helper_end
 __kuser_helper_end:
 
+#endif
+
  THUMB(	.thumb	)
 
 /*
  * Vector stubs.
  *
- * This code is copied to 0xffff0200 so we can use branches in the
- * vectors, rather than ldr's.  Note that this code must not
- * exceed 0x300 bytes.
+ * This code is copied to 0xffff1000 so we can use branches in the
+ * vectors, rather than ldr's.  Note that this code must not exceed
+ * a page size.
  *
  * Common stub entry macro:
  *   Enter in IRQ mode, spsr = SVC/USR CPSR, lr = SVC/USR PC
@@ -1088,8 +1098,17 @@ ENDPROC(vector_\name)
 1:
 	.endm
 
-	.globl	__stubs_start
+	.section .stubs, "ax", %progbits
 __stubs_start:
+	@ This must be the first word
+	.word	vector_swi
+
+vector_rst:
+ ARM(	swi	SYS_ERROR0	)
+ THUMB(	svc	#0		)
+ THUMB(	nop			)
+	b	vector_und
+
 /*
  * Interrupt dispatcher
  */
@@ -1182,6 +1201,16 @@ __stubs_start:
 	.long	__und_invalid			@  f
 
 	.align	5
+
+/*=============================================================================
+ * Address exception handler
+ *-----------------------------------------------------------------------------
+ * These aren't too critical.
+ * (they're not supposed to happen, and won't happen in 32-bit data mode).
+ */
+
+vector_addrexcptn:
+	b	vector_addrexcptn
 
 /*=============================================================================
  * Undefined FIQs
