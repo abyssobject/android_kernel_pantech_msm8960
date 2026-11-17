@@ -24,6 +24,12 @@ endif
 
 obj-y += acpuclock.o
 obj-$(CONFIG_ARCH_MSM_KRAIT) += clock-krait.o
+ifneq ($(CONFIG_ARCH_MSM8960)$(CONFIG_ARCH_APQ8064),)
+obj-y += acpuclock-krait.o
+obj-$(CONFIG_DEBUG_FS) += acpuclock-krait-debug.o
+endif
+obj-$(CONFIG_ARCH_MSM8960) += acpuclock-8960.o acpuclock-8960ab.o
+obj-$(CONFIG_ARCH_APQ8064) += acpuclock-8064.o
 obj-$(CONFIG_ARCH_MSM7X27) += acpuclock-7627.o acpuclock-8625q.o clock-pll.o
 obj-$(CONFIG_ARCH_MSM_KRAIT) += msm-krait-l2-accessors.o perf_event_msm_krait_l2.o
 obj-$(CONFIG_ARCH_MSM_KRAIT) += krait-scm.o
