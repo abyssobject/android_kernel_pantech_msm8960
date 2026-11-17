@@ -450,12 +450,21 @@ static int msm_mctl_cmd(struct msm_cam_media_controller *p_mctl,
 		break;
 			/* ISFIF config*/
 	case MSM_CAM_IOCTL_AXI_CONFIG:
+#if	1//def F_PANTECH_CAMERA_DEADBEEF_ERROR_FIX
+		CDBG("%s: MSM_CAM_IOCTL_AXI_CONFIG - E\n", __func__);
+#endif
 		if (p_mctl->axi_sdev) {
 			v4l2_set_subdev_hostdata(p_mctl->axi_sdev, p_mctl);
 			rc = v4l2_subdev_call(p_mctl->axi_sdev, core, ioctl,
 				VIDIOC_MSM_AXI_CFG, (void __user *)arg);
+#if	1//def F_PANTECH_CAMERA_DEADBEEF_ERROR_FIX
+			CDBG("%s: MSM_CAM_IOCTL_AXI_CONFIG - if\n", __func__);
+#endif
 		} else
 			rc = p_mctl->isp_config(p_mctl, cmd, arg);
+#if	1//def F_PANTECH_CAMERA_DEADBEEF_ERROR_FIX
+		CDBG("%s: MSM_CAM_IOCTL_AXI_CONFIG - X\n", __func__);
+#endif
 		break;
 	case MSM_CAM_IOCTL_ISPIF_IO_CFG:
 		rc = v4l2_subdev_call(p_mctl->ispif_sdev,
@@ -654,6 +663,7 @@ static void msm_mctl_release(struct msm_cam_media_controller *p_mctl)
 			sinfo->sensor_platform_info->csi_lane_params);
 	}
 
+pr_err("[SD_check] %s/ (p_mctl->sensor_sdev, core, s_power, 0) ",__func__);
 	if (p_mctl->act_sdev) {
 		v4l2_subdev_call(p_mctl->act_sdev, core, s_power, 0);
 		p_mctl->act_sdev = NULL;

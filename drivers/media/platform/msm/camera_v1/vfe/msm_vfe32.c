@@ -3758,6 +3758,7 @@ static void vfe32_process_reg_update_irq(
 static void vfe32_process_rdi0_reg_update_irq(
 	struct vfe32_ctrl_type *vfe32_ctrl)
 {
+    CDBG("%s: RDI0\n", __func__);
 	if (atomic_cmpxchg(
 		&vfe32_ctrl->share_ctrl->rdi0_update_ack_pending, 1, 0) == 1) {
 		vfe32_ctrl->share_ctrl->comp_output_mode |=
@@ -3799,7 +3800,7 @@ static void vfe32_process_rdi0_reg_update_irq(
 static void vfe32_process_rdi1_reg_update_irq(
 	struct vfe32_ctrl_type *vfe32_ctrl)
 {
-
+    CDBG("%s: RDI1\n", __func__);
 	if (atomic_cmpxchg(
 		&vfe32_ctrl->share_ctrl->rdi1_update_ack_pending, 1, 0)
 				== 1) {
@@ -4280,6 +4281,7 @@ static void vfe32_process_output_path_irq_rdi1(
 	/* this must be rdi image output. */
 	struct msm_free_buf *free_buf = NULL;
 	/*RDI1*/
+    CDBG("rdi1 out irq\n");
 	if (axi_ctrl->share_ctrl->operation_mode & VFE_OUTPUTS_RDI1) {
 		free_buf = vfe32_check_free_buffer(VFE_MSG_OUTPUT_IRQ,
 			VFE_MSG_OUTPUT_TERTIARY2, axi_ctrl);
@@ -5588,6 +5590,8 @@ void msm_vfe_subdev_release(struct v4l2_subdev *sd)
 		(struct vfe32_ctrl_type *)v4l2_get_subdevdata(sd);
 	CDBG("vfe subdev release %p\n",
 		vfe32_ctrl->share_ctrl->vfebase);
+	printk("vfe subdev release %p\n",
+		vfe32_ctrl->share_ctrl->vfebase);    
 }
 
 void axi_abort(struct axi_ctrl_t *axi_ctrl)
@@ -6008,9 +6012,15 @@ void axi_start(struct msm_cam_media_controller *pmctl,
 		msm_camera_io_w((
 				0x1 << axi_ctrl->share_ctrl->outpath.out2.ch0),
 				axi_ctrl->share_ctrl->vfebase + VFE_BUS_CMD);
+#if 0//def F_PANTECH_CAMERA_QPATCH_JPEG_ZSL //frame_base //for QCT_metadata_crash_check //META data test 
 		msm_camera_io_w(1, axi_ctrl->share_ctrl->vfebase +
 			vfe32_AXI_WM_CFG[axi_ctrl->share_ctrl->
 			outpath.out2.ch0]);
+#else        
+		msm_camera_io_w(0x3, axi_ctrl->share_ctrl->vfebase +
+			vfe32_AXI_WM_CFG[axi_ctrl->share_ctrl->
+			outpath.out2.ch0]);
+#endif
 	}
 	if (axi_ctrl->share_ctrl->current_mode & VFE_OUTPUTS_RDI1) {
 		axi_ctrl->share_ctrl->outpath.out3.capture_cnt =
