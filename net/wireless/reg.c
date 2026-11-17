@@ -1331,6 +1331,10 @@ get_reg_request_treatment(struct wiphy *wiphy,
 	case NL80211_REGDOM_SET_BY_CORE:
 		return REG_REQ_OK;
 	case NL80211_REGDOM_SET_BY_COUNTRY_IE:
+		if (wiphy &&
+		    (wiphy->country_ie_pref & NL80211_COUNTRY_IE_IGNORE_CORE))
+			return REG_REQ_IGNORE;
+
 		if (reg_request_cell_base(lr)) {
 			/* Trust a Cell base station over the AP's country IE */
 			if (regdom_changes(pending_request->alpha2))

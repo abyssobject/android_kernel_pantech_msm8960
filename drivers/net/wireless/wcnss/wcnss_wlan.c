@@ -14,6 +14,7 @@
 #include <linux/firmware.h>
 #include <linux/slab.h>
 #include <linux/err.h>
+#include <linux/etherdevice.h>
 #include <linux/platform_device.h>
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
@@ -39,6 +40,7 @@
 #include <mach/msm_smd.h>
 #include <mach/msm_iomap.h>
 #include <mach/subsystem_restart.h>
+#include <mach/subsystem_notif.h>
 
 #ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
 #include "wcnss_prealloc.h"
@@ -344,7 +346,66 @@ static struct {
 	struct qpnp_adc_tm_btm_param vbat_monitor_params;
 	struct qpnp_adc_tm_chip *adc_tm_dev;
 	struct mutex vbat_monitor_mutex;
+	char	wlan_nv_macAddr[WLAN_MAC_ADDR_SIZE];
+	void *wcnss_notif_hdle;
+	u8 is_shutdown;
 } *penv = NULL;
+
+#define MAC_ADDRESS_STR "%02x:%02x:%02x:%02x:%02x:%02x"
+
+
+static ssize_t wcnss_wlan_macaddr_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int octets[WLAN_MAC_ADDR_SIZE];
+	u8 macAddr[WLAN_MAC_ADDR_SIZE];
+	int i;
+
+	if (!penv)
+		return -ENODEV;
+
+	pr_debug("%s: Receive MAC Addr From user space: %s\n", __func__, buf);
+
+	if (WLAN_MAC_ADDR_SIZE != sscanf(buf, MAC_ADDRESS_STR,
+		 &octets[0], &octets[1], &octets[2],
+		 &octets[3], &octets[4], &octets[5])) {
+
+		pr_err("%s: Failed to Copy MAC\n", __func__);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < WLAN_MAC_ADDR_SIZE; i++) {
+		if (octets[i] > 0xff)
+			return -EINVAL;
+		macAddr[i] = octets[i];
+	}
+	if (!is_valid_ether_addr(macAddr))
+		return -EINVAL;
+
+	memcpy(penv->wlan_nv_macAddr, macAddr, sizeof(penv->wlan_nv_macAddr));
+
+	pr_info("%s: Write MAC Addr:" MAC_ADDRESS_STR "\n", __func__,
+		penv->wlan_nv_macAddr[0], penv->wlan_nv_macAddr[1],
+		penv->wlan_nv_macAddr[2], penv->wlan_nv_macAddr[3],
+		penv->wlan_nv_macAddr[4], penv->wlan_nv_macAddr[5]);
+
+	return count;
+}
+
+static ssize_t wcnss_wlan_macaddr_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	if (!penv)
+		return -ENODEV;
+
+	return scnprintf(buf, PAGE_SIZE, MAC_ADDRESS_STR,
+		penv->wlan_nv_macAddr[0], penv->wlan_nv_macAddr[1],
+		penv->wlan_nv_macAddr[2], penv->wlan_nv_macAddr[3],
+		penv->wlan_nv_macAddr[4], penv->wlan_nv_macAddr[5]);
+}
+
+static DEVICE_ATTR(wcnss_mac_addr, S_IRUSR | S_IWUSR,
+	wcnss_wlan_macaddr_show, wcnss_wlan_macaddr_store);
 
 static ssize_t wcnss_serial_number_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -673,8 +734,14 @@ static int wcnss_create_sysfs(struct device *dev)
 	if (ret)
 		goto remove_thermal;
 
+	ret = device_create_file(dev, &dev_attr_wcnss_mac_addr);
+	if (ret)
+		goto remove_version;
+
 	return 0;
 
+remove_version:
+	device_remove_file(dev, &dev_attr_wcnss_version);
 remove_thermal:
 	device_remove_file(dev, &dev_attr_thermal_mitigation);
 remove_serial:
@@ -689,6 +756,7 @@ static void wcnss_remove_sysfs(struct device *dev)
 		device_remove_file(dev, &dev_attr_serial_number);
 		device_remove_file(dev, &dev_attr_thermal_mitigation);
 		device_remove_file(dev, &dev_attr_wcnss_version);
+		device_remove_file(dev, &dev_attr_wcnss_mac_addr);
 	}
 }
 static void wcnss_smd_notify_event(void *data, unsigned int event)
@@ -882,11 +950,34 @@ EXPORT_SYMBOL(wcnss_get_wlan_config);
 
 int wcnss_device_ready(void)
 {
-	if (penv && penv->pdev && penv->nv_downloaded)
+	if (penv && penv->pdev && penv->nv_downloaded &&
+	    !wcnss_device_is_shutdown())
 		return 1;
 	return 0;
 }
 EXPORT_SYMBOL(wcnss_device_ready);
+
+int wcnss_device_is_shutdown(void)
+{
+	if (penv && penv->is_shutdown)
+		return 1;
+	return 0;
+}
+EXPORT_SYMBOL(wcnss_device_is_shutdown);
+
+int wcnss_get_wlan_mac_address(char mac_addr[WLAN_MAC_ADDR_SIZE])
+{
+	if (!penv)
+		return -ENODEV;
+
+	memcpy(mac_addr, penv->wlan_nv_macAddr, WLAN_MAC_ADDR_SIZE);
+	pr_debug("%s: Get MAC Addr:" MAC_ADDRESS_STR "\n", __func__,
+		penv->wlan_nv_macAddr[0], penv->wlan_nv_macAddr[1],
+		penv->wlan_nv_macAddr[2], penv->wlan_nv_macAddr[3],
+		penv->wlan_nv_macAddr[4], penv->wlan_nv_macAddr[5]);
+	return 0;
+}
+EXPORT_SYMBOL(wcnss_get_wlan_mac_address);
 
 
 struct resource *wcnss_wlan_get_memory_map(struct device *dev)
@@ -2093,6 +2184,24 @@ static struct miscdevice wcnss_misc = {
 	.fops = &wcnss_node_fops,
 };
 
+static int wcnss_notif_cb(struct notifier_block *this, unsigned long code,
+				void *ss_handle)
+{
+	pr_debug("%s: wcnss notification event: %lu\n", __func__, code);
+
+	if (SUBSYS_BEFORE_SHUTDOWN == code)
+		penv->is_shutdown = 1;
+	else if (SUBSYS_AFTER_POWERUP == code)
+		penv->is_shutdown = 0;
+
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block wnb = {
+	.notifier_call = wcnss_notif_cb,
+};
+
+
 static int
 wcnss_wlan_probe(struct platform_device *pdev)
 {
@@ -2119,6 +2228,16 @@ wcnss_wlan_probe(struct platform_device *pdev)
 		return -ENOENT;
 	}
 
+	/* register wcnss event notification */
+	penv->wcnss_notif_hdle = subsys_notif_register_notifier("wcnss", &wnb);
+	if (IS_ERR(penv->wcnss_notif_hdle)) {
+		pr_err("wcnss: register event notification failed!\n");
+		ret = PTR_ERR(penv->wcnss_notif_hdle);
+		wcnss_remove_sysfs(&pdev->dev);
+		penv = NULL;
+		return ret;
+	}
+
 	mutex_init(&penv->dev_lock);
 	mutex_init(&penv->vbat_monitor_mutex);
 	init_waitqueue_head(&penv->read_wait);
@@ -2139,6 +2258,8 @@ wcnss_wlan_probe(struct platform_device *pdev)
 static int
 wcnss_wlan_remove(struct platform_device *pdev)
 {
+	if (penv->wcnss_notif_hdle)
+		subsys_notif_unregister_notifier(penv->wcnss_notif_hdle, &wnb);
 	wcnss_remove_sysfs(&pdev->dev);
 	penv = NULL;
 	return 0;
