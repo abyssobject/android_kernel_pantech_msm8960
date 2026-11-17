@@ -1,3 +1,23 @@
+# APQ8064 board objects; Pantech (CUST_PANTECH_H) boards use their own copies
+BOARD_OBJ_NAME:=board-8064.o
+BOARD_CAMERA_OBJ_NAME:=board-8064-camera.o
+BOARD_DISPLAY_OBJ_NAME:=board-8064-display.o
+BOARD_GPIOMUX_OBJ_NAME:=board-8064-gpiomux.o
+BOARD_PMIC_OBJ_NAME:=board-8064-pmic.o
+BOARD_REGULATOR_OBJ_NAME:=board-8064-regulator.o
+ACPUCLOCK_OBJ_NAME:=acpuclock-8064.o
+DEVICES_OBJ_NAME:=devices-8064.o
+ifdef CONFIG_CUST_PANTECH_H
+BOARD_OBJ_NAME:=cust/board-sky.o
+BOARD_CAMERA_OBJ_NAME:=cust/board-sky-camera.o
+BOARD_DISPLAY_OBJ_NAME:=cust/board-sky-display.o
+BOARD_GPIOMUX_OBJ_NAME:=cust/board-sky-gpiomux.o
+BOARD_PMIC_OBJ_NAME:=cust/board-sky-pmic.o
+BOARD_REGULATOR_OBJ_NAME:=cust/board-sky-regulator.o
+ACPUCLOCK_OBJ_NAME:=cust/acpuclock-sky.o
+DEVICES_OBJ_NAME:=cust/devices-sky.o
+endif
+
 CFLAGS_scm.o :=$(call as-instr,.arch_extension sec,-DREQUIRES_SEC=1)
 
 obj-y += io.o dma.o memory.o
@@ -29,7 +49,7 @@ obj-y += acpuclock-krait.o
 obj-$(CONFIG_DEBUG_FS) += acpuclock-krait-debug.o
 endif
 obj-$(CONFIG_ARCH_MSM8960) += acpuclock-8960.o acpuclock-8960ab.o
-obj-$(CONFIG_ARCH_APQ8064) += acpuclock-8064.o
+obj-$(CONFIG_ARCH_APQ8064) += $(ACPUCLOCK_OBJ_NAME)
 obj-$(CONFIG_ARCH_MSM7X27) += acpuclock-7627.o acpuclock-8625q.o clock-pll.o
 obj-$(CONFIG_ARCH_MSM_KRAIT) += msm-krait-l2-accessors.o perf_event_msm_krait_l2.o
 obj-$(CONFIG_ARCH_MSM_KRAIT) += krait-scm.o
@@ -256,10 +276,10 @@ obj-$(CONFIG_ARCH_MSM8960) += footswitch-8x60.o
 obj-$(CONFIG_ARCH_MSM8960) += memory_topology.o
 obj-$(CONFIG_ARCH_MSM8960) += saw-regulator.o
 obj-$(CONFIG_ARCH_MSM8960) += devices-8960.o
-obj-$(CONFIG_ARCH_APQ8064) += devices-8960.o devices-8064.o
+obj-$(CONFIG_ARCH_APQ8064) += devices-8960.o $(DEVICES_OBJ_NAME)
 board-8960-all-objs += board-8960.o board-8960-camera.o board-8960-display.o board-8960-pmic.o board-8960-storage.o board-8960-gpiomux.o
 board-8930-all-objs += board-8930.o board-8930-camera.o board-8930-display.o board-8930-pmic.o board-8930-storage.o board-8930-gpiomux.o devices-8930.o board-8930-gpu.o
-board-8064-all-objs += board-8064.o board-8064-pmic.o board-8064-storage.o board-8064-gpiomux.o board-8064-camera.o board-8064-display.o board-8064-gpu.o
+board-8064-all-objs += $(BOARD_OBJ_NAME) $(BOARD_PMIC_OBJ_NAME) board-8064-storage.o $(BOARD_GPIOMUX_OBJ_NAME) $(BOARD_CAMERA_OBJ_NAME) $(BOARD_DISPLAY_OBJ_NAME) board-8064-gpu.o
 obj-$(CONFIG_MACH_MSM8960_CDP) += board-8960-all.o board-8960-regulator.o
 obj-$(CONFIG_MACH_MSM8960_MTP) += board-8960-all.o board-8960-regulator.o
 obj-$(CONFIG_MACH_MSM8960_FLUID) += board-8960-all.o board-8960-regulator.o
@@ -269,9 +289,12 @@ obj-$(CONFIG_MACH_MSM8930_FLUID) += board-8930-all.o board-8930-regulator-pm8038
 obj-$(CONFIG_PM8921_BMS) += bms-batterydata.o bms-batterydata-desay.o batterydata-lib.o
 obj-$(CONFIG_QPNP_BMS) += bms-batterydata.o bms-batterydata-desay.o batterydata-lib.o
 obj-$(CONFIG_QPNP_BMS) += bms-batterydata-oem.o bms-batterydata-qrd-4v35-2000mah.o bms-batterydata-qrd-4v2-1300mah.o
-obj-$(CONFIG_MACH_APQ8064_CDP) += board-8064-all.o board-8064-regulator.o
-obj-$(CONFIG_MACH_APQ8064_MTP) += board-8064-all.o board-8064-regulator.o
-obj-$(CONFIG_MACH_APQ8064_LIQUID) += board-8064-all.o board-8064-regulator.o
+obj-$(CONFIG_MACH_APQ8064_CDP) += board-8064-all.o $(BOARD_REGULATOR_OBJ_NAME)
+obj-$(CONFIG_MACH_APQ8064_MTP) += board-8064-all.o $(BOARD_REGULATOR_OBJ_NAME)
+obj-$(CONFIG_MACH_APQ8064_EF52S) += board-8064-all.o $(BOARD_REGULATOR_OBJ_NAME)
+obj-$(CONFIG_MACH_APQ8064_EF52K) += board-8064-all.o $(BOARD_REGULATOR_OBJ_NAME)
+obj-$(CONFIG_MACH_APQ8064_EF52L) += board-8064-all.o $(BOARD_REGULATOR_OBJ_NAME)
+obj-$(CONFIG_MACH_APQ8064_LIQUID) += board-8064-all.o $(BOARD_REGULATOR_OBJ_NAME)
 obj-$(CONFIG_MACH_MPQ8064_HRD) += board-8064-all.o board-8064-regulator.o board-8064-bt.o
 obj-$(CONFIG_MACH_MPQ8064_DTV) += board-8064-all.o board-8064-regulator.o
 obj-$(CONFIG_ARCH_MSM9615) += board-9615.o devices-9615.o board-9615-regulator.o board-9615-gpiomux.o board-9615-storage.o board-9615-display.o

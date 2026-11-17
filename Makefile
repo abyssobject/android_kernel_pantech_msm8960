@@ -371,6 +371,8 @@ LINUXINCLUDE    := \
 		-Iinclude \
 		$(USERINCLUDE)
 
+LINUXINCLUDE += -I$(srctree)/include/pantech
+
 KBUILD_CPPFLAGS := -D__KERNEL__
 
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
@@ -378,6 +380,11 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks
+# PANTECH_KERNEL_FLAGS
+PANTECH_BUILD_SYSTEM := $(srctree)/include/pantech
+include $(PANTECH_BUILD_SYSTEM)/pantech_config.mk
+KBUILD_CFLAGS += $(PANTECH_KERNEL_FLAGS)
+
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
 KBUILD_AFLAGS   := -D__ASSEMBLY__
