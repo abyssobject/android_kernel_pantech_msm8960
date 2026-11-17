@@ -574,7 +574,7 @@ static const struct dev_pm_ops drv2665_pm_ops = {
   
 //-----------------------------------------Timer end-----------------------------------------//  
   
-static int __devinit drv2665_probe(struct i2c_client *client,  
+static int drv2665_probe(struct i2c_client *client,  
         const struct i2c_device_id *id)  
 {  
     int status;  
@@ -689,7 +689,7 @@ exit:
     return status;  
 }  
   
-static int __devexit drv2665_remove(struct i2c_client *client)  
+static int drv2665_remove(struct i2c_client *client)  
 {  
     struct drv2665_data *data;  
   
@@ -762,7 +762,7 @@ static struct i2c_driver drv2665_driver = {
     .probe      = drv2665_probe,  
 //  .detect     = drv2665_detect,  
     .address_list   = normal_i2c,  
-    .remove     = __devexit_p(drv2665_remove),  
+    .remove     = drv2665_remove,  
 };  
   
   

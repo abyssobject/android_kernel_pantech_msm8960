@@ -1670,7 +1670,7 @@ static void rmi_driver_late_resume(struct early_suspend *h)
 
 #endif /* CONFIG_PM */
 
-static int __devexit rmi_driver_remove(struct rmi_device *rmi_dev)
+static int rmi_driver_remove(struct rmi_device *rmi_dev)
 {
 	struct rmi_driver_data *data = rmi_get_driverdata(rmi_dev);
 	struct rmi_function_container *entry;
@@ -1722,7 +1722,7 @@ static struct rmi_driver sensor_driver = {
 	.get_func_irq_mask = rmi_driver_irq_get_mask,
 	.store_irq_mask = rmi_driver_irq_save,
 	.restore_irq_mask = rmi_driver_irq_restore,
-	.remove = __devexit_p(rmi_driver_remove)
+	.remove = rmi_driver_remove
 };
 
 /* sysfs show and store fns for driver attributes */

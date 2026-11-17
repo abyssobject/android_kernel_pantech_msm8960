@@ -1092,7 +1092,7 @@ static int mipi_rohm_lcd_suspend(struct platform_device *pdev, pm_message_t stat
 #endif
 #endif
 
-static int __devinit mipi_rohm_lcd_probe(struct platform_device *pdev)
+static int mipi_rohm_lcd_probe(struct platform_device *pdev)
 {
     if (pdev->id == 0) {
         mipi_rohm_pdata = pdev->dev.platform_data;

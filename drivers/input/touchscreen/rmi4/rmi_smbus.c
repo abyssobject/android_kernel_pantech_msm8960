@@ -473,7 +473,7 @@ static void disable_device(struct rmi_phys_device *phys)
 }
 
 
-static int __devinit rmi_smb_probe(struct i2c_client *client,
+static int rmi_smb_probe(struct i2c_client *client,
 				  const struct i2c_device_id *id)
 {
 	char dbg_buf[50];
@@ -628,7 +628,7 @@ err_phys:
 	return retval;
 }
 
-static int __devexit rmi_smb_remove(struct i2c_client *client)
+static int rmi_smb_remove(struct i2c_client *client)
 {
 	struct rmi_phys_device *phys = i2c_get_clientdata(client);
 	struct rmi_device_platform_data *pd = client->dev.platform_data;
@@ -657,7 +657,7 @@ static struct i2c_driver rmi_smb_driver = {
 	},
 	.id_table	= rmi_id,
 	.probe		= rmi_smb_probe,
-	.remove		= __devexit_p(rmi_smb_remove),
+	.remove		= rmi_smb_remove,
 };
 
 static int __init rmi_smb_init(void)

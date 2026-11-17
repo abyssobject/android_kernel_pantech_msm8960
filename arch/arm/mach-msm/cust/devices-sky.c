@@ -739,7 +739,7 @@ struct platform_device apq8064_device_qup_spi_gsbi7 = {
 #endif /* CONFIG_SKY_DMB_SPI_HW */
 
 #ifdef CONFIG_PANTECH_GSBI5_UART_CONSOLE
-static struct resource resources_uart_gsbi5[] = {
+static struct resource resources_uart_gsbi5_console[] = {
 	{
 		.start	= GSBI5_UARTDM_IRQ,
 		.end	= GSBI5_UARTDM_IRQ,
@@ -762,8 +762,8 @@ static struct resource resources_uart_gsbi5[] = {
 struct platform_device apq8064_device_uart_gsbi5 = {
 	.name	= "msm_serial_hsl",
 	.id	= 0,
-	.num_resources	= ARRAY_SIZE(resources_uart_gsbi5),
-	.resource	= resources_uart_gsbi5,
+	.num_resources	= ARRAY_SIZE(resources_uart_gsbi5_console),
+	.resource	= resources_uart_gsbi5_console,
 };
 #endif
 

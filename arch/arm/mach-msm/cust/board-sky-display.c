@@ -344,18 +344,9 @@ static struct msm_panel_common_pdata mdp_pdata = {
 	.mdp_max_clk = 266667000,
 #if defined(CONFIG_MACH_APQ8064_EF51S) || defined(CONFIG_MACH_APQ8064_EF51K) || defined(CONFIG_MACH_APQ8064_EF51L)
 #ifdef CONFIG_F_SKYDISP_FIX_MDP_UNDERRUN
-	.mdp_max_bw = 3080000000UL, 
-	.mdp_bw_ab_factor = 160,
-	.mdp_bw_ib_factor = 170,
 #else
-	.mdp_max_bw = 2000000000,
-	.mdp_bw_ab_factor = 115,
-	.mdp_bw_ib_factor = 150,
 #endif
 #else
-	.mdp_max_bw = 2000000000,
-	.mdp_bw_ab_factor = 115,
-	.mdp_bw_ib_factor = 150,
 #endif
 	.mdp_bus_scale_table = &mdp_bus_scale_pdata,
 	.mdp_rev = MDP_REV_44,

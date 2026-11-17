@@ -273,7 +273,6 @@ VREG_CONSUMERS(EXT_MPP8) = {
 	REGULATOR_SUPPLY("ext_mpp8",		NULL),
 	REGULATOR_SUPPLY("vbus",		"msm_ehci_host.1"),
 };
-#if (CONFIG_BOARD_VER <= CONFIG_PT10)	
 VREG_CONSUMERS(EXT_3P3V) = {
 	REGULATOR_SUPPLY("ext_3p3v",		NULL),
 	REGULATOR_SUPPLY("vdd-phy",		"spi0.2"),
@@ -283,7 +282,6 @@ VREG_CONSUMERS(EXT_3P3V) = {
 	REGULATOR_SUPPLY("hdmi_mux_vdd",        "hdmi_msm.0"),
 	REGULATOR_SUPPLY("pcie_ext_3p3v",       "msm_pcie"),
 };
-#endif
 VREG_CONSUMERS(EXT_TS_SW) = {
 	REGULATOR_SUPPLY("ext_ts_sw",		NULL),
 	REGULATOR_SUPPLY("vdd_ana",		"3-005b"),

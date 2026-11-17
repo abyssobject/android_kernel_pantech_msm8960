@@ -4647,106 +4647,106 @@ MACHINE_START(APQ8064_EF48S, "PANTECH APQ8064 EF48S")
 	.map_io = apq8064_map_io,
 	.reserve = apq8064_reserve,
 	.init_irq = apq8064_init_irq,
-	.handle_irq = gic_handle_irq,
-	.timer = &msm_timer,
+	.init_time = msm_timer_init,
 	.init_machine = apq8064_cdp_init,
 	.init_early = apq8064_allocate_memory_regions,
 	.init_very_early = apq8064_early_reserve,
 	.restart = msm_restart,
+	.smp = &msm8960_smp_ops,
 MACHINE_END
 
 MACHINE_START(APQ8064_EF49K, "PANTECH APQ8064 EF49K")
 	.map_io = apq8064_map_io,
 	.reserve = apq8064_reserve,
 	.init_irq = apq8064_init_irq,
-	.handle_irq = gic_handle_irq,
-	.timer = &msm_timer,
+	.init_time = msm_timer_init,
 	.init_machine = apq8064_cdp_init,
 	.init_early = apq8064_allocate_memory_regions,
 	.init_very_early = apq8064_early_reserve,
 	.restart = msm_restart,
+	.smp = &msm8960_smp_ops,
 MACHINE_END
 
 MACHINE_START(APQ8064_EF50L, "PANTECH APQ8064 EF50L")
 	.map_io = apq8064_map_io,
 	.reserve = apq8064_reserve,
 	.init_irq = apq8064_init_irq,
-	.handle_irq = gic_handle_irq,
-	.timer = &msm_timer,
+	.init_time = msm_timer_init,
 	.init_machine = apq8064_cdp_init,
 	.init_early = apq8064_allocate_memory_regions,
 	.init_very_early = apq8064_early_reserve,
 	.restart = msm_restart,
+	.smp = &msm8960_smp_ops,
 MACHINE_END
 
 MACHINE_START(APQ8064_EF51S, "PANTECH APQ8064 EF51S")
 	.map_io = apq8064_map_io,
 	.reserve = apq8064_reserve,
 	.init_irq = apq8064_init_irq,
-	.handle_irq = gic_handle_irq,
-	.timer = &msm_timer,
+	.init_time = msm_timer_init,
 	.init_machine = apq8064_cdp_init,
 	.init_early = apq8064_allocate_memory_regions,
 	.init_very_early = apq8064_early_reserve,
 	.restart = msm_restart,
+	.smp = &msm8960_smp_ops,
 MACHINE_END
 
 MACHINE_START(APQ8064_EF51K, "PANTECH APQ8064 EF51K")
 	.map_io = apq8064_map_io,
 	.reserve = apq8064_reserve,
 	.init_irq = apq8064_init_irq,
-	.handle_irq = gic_handle_irq,
-	.timer = &msm_timer,
+	.init_time = msm_timer_init,
 	.init_machine = apq8064_cdp_init,
 	.init_early = apq8064_allocate_memory_regions,
 	.init_very_early = apq8064_early_reserve,
 	.restart = msm_restart,
+	.smp = &msm8960_smp_ops,
 MACHINE_END
 
 MACHINE_START(APQ8064_EF51L, "PANTECH APQ8064 EF51L")
 	.map_io = apq8064_map_io,
 	.reserve = apq8064_reserve,
 	.init_irq = apq8064_init_irq,
-	.handle_irq = gic_handle_irq,
-	.timer = &msm_timer,
+	.init_time = msm_timer_init,
 	.init_machine = apq8064_cdp_init,
 	.init_early = apq8064_allocate_memory_regions,
 	.init_very_early = apq8064_early_reserve,
 	.restart = msm_restart,
+	.smp = &msm8960_smp_ops,
 MACHINE_END
 
 MACHINE_START(APQ8064_EF52S, "PANTECH APQ8064 EF52S")
         .map_io = apq8064_map_io,
         .reserve = apq8064_reserve,
         .init_irq = apq8064_init_irq,
-        .handle_irq = gic_handle_irq,
-        .timer = &msm_timer,
+	.init_time = msm_timer_init,
         .init_machine = apq8064_cdp_init,
         .init_early = apq8064_allocate_memory_regions,
         .init_very_early = apq8064_early_reserve,
         .restart = msm_restart,
+	.smp = &msm8960_smp_ops,
 MACHINE_END
 
 MACHINE_START(APQ8064_EF52K, "PANTECH APQ8064 EF52K")
         .map_io = apq8064_map_io,
         .reserve = apq8064_reserve,
         .init_irq = apq8064_init_irq,
-        .handle_irq = gic_handle_irq,
-        .timer = &msm_timer,
+	.init_time = msm_timer_init,
         .init_machine = apq8064_cdp_init,
         .init_early = apq8064_allocate_memory_regions,
         .init_very_early = apq8064_early_reserve,
         .restart = msm_restart,
+	.smp = &msm8960_smp_ops,
 MACHINE_END
 
 MACHINE_START(APQ8064_EF52L, "PANTECH APQ8064 EF52L")
         .map_io = apq8064_map_io,
         .reserve = apq8064_reserve,
         .init_irq = apq8064_init_irq,
-        .handle_irq = gic_handle_irq,
-        .timer = &msm_timer,
+	.init_time = msm_timer_init,
         .init_machine = apq8064_cdp_init,
         .init_early = apq8064_allocate_memory_regions,
         .init_very_early = apq8064_early_reserve,
         .restart = msm_restart,
+	.smp = &msm8960_smp_ops,
 MACHINE_END

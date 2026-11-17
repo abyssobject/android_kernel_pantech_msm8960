@@ -614,7 +614,7 @@ void SKY_LCD_CE_CASE_SET(struct msm_fb_data_type *mfd, uint32_t CEcase)
     printk(KERN_INFO"[LCD] %s+, do nothing\n", __func__);	
 }
 
-static int __devinit mipi_sony_lcd_probe(struct platform_device *pdev)
+static int mipi_sony_lcd_probe(struct platform_device *pdev)
 {
     if (pdev->id == 0) {
         mipi_sony_pdata = pdev->dev.platform_data;

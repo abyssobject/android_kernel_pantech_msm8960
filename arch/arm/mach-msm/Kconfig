@@ -1208,6 +1208,11 @@ config MACH_APQ8064_EF52L
 	help
 	  Support for the Pantech APQ8064 EF52L device.
 
+config 3LED_SETTING
+	bool
+	default y
+
+
 config CUST_PANTECH_H
 	bool
 

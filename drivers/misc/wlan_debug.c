@@ -144,7 +144,7 @@ EXPORT_SYMBOL(wlan_debug_enum_trace);
 #endif // CONFIG_PANTECH_WLAN_DEBUG
 
 
-static int __devinit
+static int
 wlan_debug_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -152,7 +152,7 @@ wlan_debug_probe(struct platform_device *pdev)
 	return ret ;
 }
 
-static int __devexit
+static int
 wlan_debug_remove(struct platform_device *pdev)
 {
 	pr_info("%s(%d):[WIFI]\n", __func__, __LINE__);
@@ -166,7 +166,7 @@ static struct platform_driver wlan_debug_driver = {
 		.owner  = THIS_MODULE,
 	},
 	.probe  = wlan_debug_probe,
-	.remove = __devexit_p(wlan_debug_remove),
+	.remove = wlan_debug_remove,
 };
 
 static int __init wlan_debug_init(void)

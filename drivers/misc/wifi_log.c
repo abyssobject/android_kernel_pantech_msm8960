@@ -166,7 +166,7 @@ static struct miscdevice wifi_log_miscdev =
 };
 
 #ifdef PLATFORM_DEVICE
-static int __devinit
+static int
 wifi_log_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -194,7 +194,7 @@ wifi_log_probe(struct platform_device *pdev)
 	return ret ;
 }
 
-static int __devexit
+static int
 wifi_log_remove(struct platform_device *pdev)
 {
 	pr_info("%s(%d)\n", __func__, __LINE__);
@@ -209,7 +209,7 @@ static struct platform_driver wifi_log_driver = {
 		.owner  = THIS_MODULE,
 	},
 	.probe  = wifi_log_probe,
-	.remove = __devexit_p(wifi_log_remove),
+	.remove = wifi_log_remove,
 };
 #endif
 

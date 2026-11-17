@@ -514,7 +514,7 @@ static void free_irqs(struct smb347_chg_chip *chip)
   }
 }
 
-static int __devinit request_irqs(struct smb347_chg_chip *chip, struct platform_device *pdev)
+static int request_irqs(struct smb347_chg_chip *chip, struct platform_device *pdev)
 {
 	struct resource *res;
 	int ret;
@@ -1584,7 +1584,7 @@ static int is_battery_present(void)
 	return 1;
 }
 
-static void __devinit determine_initial_state(struct smb347_chg_chip *chip)
+static void determine_initial_state(struct smb347_chg_chip *chip)
 {
 #ifdef USE_SMB347_CABLE_DETECTION	
 	
@@ -2379,7 +2379,7 @@ int smb347_charger_battery_charging_test_init(struct smb347_chg_chip *chip)
 }
 #endif
 
-static int __devinit smb347_i2c_probe(struct i2c_client *client,
+static int smb347_i2c_probe(struct i2c_client *client,
                                   const struct i2c_device_id *id)
 {
 	unsigned char data=0;
@@ -2404,7 +2404,7 @@ static int __devinit smb347_i2c_probe(struct i2c_client *client,
 	return 0;
 }
 
-static int __devexit	smb347_i2c_remove(struct i2c_client *client)
+static int	smb347_i2c_remove(struct i2c_client *client)
 {
         the_chip->smb347_client = NULL;
         return 0;
@@ -2429,7 +2429,7 @@ static struct i2c_driver smb347_i2c_driver = {
                    .name = "smb347-i2c",
         },
         .probe = smb347_i2c_probe,
-        .remove = __devexit_p(smb347_i2c_remove),
+        .remove = smb347_i2c_remove,
         .shutdown = smb347_i2c_shutdown,
         .id_table = smb347_id,
 };
@@ -2536,7 +2536,7 @@ static int pm_chg_disable_wd(struct smb347_chg_chip *chip)
 #define CHG_BAT_TEMP_DIS_BIT	BIT(2)
 #define SAFE_CURRENT_MA		1500
 #define VREF_BATT_THERM_FORCE_ON	BIT(7)
-static int __devinit pm8921_chg_hw_init(struct smb347_chg_chip *chip)
+static int pm8921_chg_hw_init(struct smb347_chg_chip *chip)
 {
 	int rc;
 	
@@ -2687,7 +2687,7 @@ static int smb347_charger_suspend(struct device *dev)
 	return 0;
 }
 
-static int __devinit smb347_charger_probe(struct platform_device *pdev)
+static int smb347_charger_probe(struct platform_device *pdev)
 {
 	int rc = 0;
 
@@ -2911,7 +2911,7 @@ free_chip:
 	return rc;
 }
 
-static int __devexit smb347_charger_remove(struct platform_device *pdev)
+static int smb347_charger_remove(struct platform_device *pdev)
 {
 	struct smb347_chg_chip *chip = platform_get_drvdata(pdev);
 
@@ -2942,7 +2942,7 @@ static const struct dev_pm_ops smb347_pm_ops = {
 };
 static struct platform_driver smb347_charger_driver = {
 	.probe		= smb347_charger_probe,
-	.remove		= __devexit_p(smb347_charger_remove),
+	.remove		= smb347_charger_remove,
 	.driver		= {
 			.name	= CHARGER_DEV_NAME,
 			.owner	= THIS_MODULE,

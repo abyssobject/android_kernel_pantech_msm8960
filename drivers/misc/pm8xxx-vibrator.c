@@ -20,7 +20,7 @@
 #include <linux/mfd/pm8xxx/core.h>
 #include <linux/mfd/pm8xxx/vibrator.h>
 
-#include "../staging/iio/sysfs.h"
+#include <linux/iio/sysfs.h>
 
 #include "../staging/android/timed_output.h"
 

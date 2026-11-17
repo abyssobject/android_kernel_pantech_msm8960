@@ -240,7 +240,7 @@ int max17058_get_soc(void)
 	return adj_soc;
 }
 
-static int __devinit max17058_probe(struct i2c_client *client,
+static int max17058_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
@@ -257,7 +257,7 @@ static int __devinit max17058_probe(struct i2c_client *client,
 	return 0;
 }
 
-static int __devexit max17058_remove(struct i2c_client *client)
+static int max17058_remove(struct i2c_client *client)
 {
 	max17058_client = NULL;
 	return 0;
@@ -288,7 +288,7 @@ static struct i2c_driver max17058_i2c_driver = {
 		.pm	= &max17058_pm_ops,
 	},
 	.probe		= max17058_probe,
-	.remove		= __devexit_p(max17058_remove),
+	.remove		= max17058_remove,
 	.id_table	= max17058_id,
 };
 
