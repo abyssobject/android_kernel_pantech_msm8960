@@ -388,9 +388,8 @@ static void pm8xxx_pwm_calc_period(struct pm8xxx_pwm_chip *chip,
 	int	best_m, best_div, best_clk;
 	unsigned int	last_err, cur_err, min_err;
 	unsigned int	tmp_p, period_n;
-	struct	pm8xxx_pwm_period *period = &pwm->period;
 	struct pm8xxx_pwm_channel_data *cdata =
-			&chip->channels[chip->current_channel]
+			&chip->channels[chip->current_channel];
 
 	if (cdata->banks == PM_PWM_BANK_LO)
 		n = 7;

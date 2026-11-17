@@ -27,6 +27,10 @@
 #include <sound/pcm_params.h>
 #include <mach/clk.h>
 
+static const struct snd_soc_component_driver msm_dai_q6_component = {
+	.name		= "msm-dai-q6",
+};
+
 enum {
 	STATUS_PORT_STARTED, /* track if AFE port has started */
 	STATUS_MAX
@@ -1205,7 +1209,7 @@ static int msm_dai_q6_dai_auxpcm_remove(struct snd_soc_dai *dai)
 
 done:
 	kfree(dai_data);
-	snd_soc_unregister_dai(dai->dev);
+	snd_soc_unregister_component(dai->dev);
 
 	mutex_unlock(&aux_pcm_mutex);
 
@@ -1255,7 +1259,7 @@ static int msm_dai_q6_dai_sec_auxpcm_remove(struct snd_soc_dai *dai)
 
 done:
 	kfree(dai_data);
-	snd_soc_unregister_dai(dai->dev);
+	snd_soc_unregister_component(dai->dev);
 
 	mutex_unlock(&aux_pcm_mutex);
 
@@ -1320,7 +1324,7 @@ static int msm_dai_q6_dai_mi2s_remove(struct snd_soc_dai *dai)
 			  mi2s_dai_data->tx_dai.mi2s_dai_data.status_mask);
 	}
 	kfree(mi2s_dai_data);
-	snd_soc_unregister_dai(dai->dev);
+	snd_soc_unregister_component(dai->dev);
 
 	return 0;
 }
@@ -1374,7 +1378,7 @@ static int msm_dai_q6_dai_remove(struct snd_soc_dai *dai)
 		clear_bit(STATUS_PORT_STARTED, dai_data->status_mask);
 	}
 	kfree(dai_data);
-	snd_soc_unregister_dai(dai->dev);
+	snd_soc_unregister_component(dai->dev);
 
 	return 0;
 }
@@ -1853,94 +1857,100 @@ static int msm_dai_q6_dev_probe(struct platform_device *pdev)
 	switch (pdev->id) {
 	case PRIMARY_I2S_RX:
 	case SECONDARY_I2S_RX:
-		rc = snd_soc_register_dai(&pdev->dev, &msm_dai_q6_i2s_rx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_i2s_rx_dai, 1);
 		break;
 	case PRIMARY_I2S_TX:
 	case SECONDARY_I2S_TX:
-		rc = snd_soc_register_dai(&pdev->dev, &msm_dai_q6_i2s_tx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_i2s_tx_dai, 1);
 		break;
 	case PCM_RX:
-		rc = snd_soc_register_dai(&pdev->dev,
-				&msm_dai_q6_aux_pcm_rx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_aux_pcm_rx_dai, 1);
 		break;
 	case PCM_TX:
-		rc = snd_soc_register_dai(&pdev->dev,
-				&msm_dai_q6_aux_pcm_tx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_aux_pcm_tx_dai, 1);
 		break;
 
 	case SECONDARY_PCM_RX:
-		rc = snd_soc_register_dai(&pdev->dev,
-				&msm_dai_q6_sec_aux_pcm_rx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_sec_aux_pcm_rx_dai, 1);
 		break;
 	case SECONDARY_PCM_TX:
-		rc = snd_soc_register_dai(&pdev->dev,
-				&msm_dai_q6_sec_aux_pcm_tx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_sec_aux_pcm_tx_dai, 1);
 		break;
 	case SLIMBUS_0_RX:
 	case SLIMBUS_4_RX:
-		rc = snd_soc_register_dai(&pdev->dev,
-				&msm_dai_q6_slimbus_rx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_slimbus_rx_dai, 1);
 		break;
 	case SLIMBUS_0_TX:
 	case SLIMBUS_4_TX:
 	case SLIMBUS_3_TX:
-		rc = snd_soc_register_dai(&pdev->dev,
-				&msm_dai_q6_slimbus_tx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_slimbus_tx_dai, 1);
 		break;
 	case SLIMBUS_1_RX:
-		rc = snd_soc_register_dai(&pdev->dev,
-				&msm_dai_q6_slimbus_1_rx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_slimbus_1_rx_dai, 1);
 		break;
 	case SLIMBUS_1_TX:
-		rc = snd_soc_register_dai(&pdev->dev,
-				&msm_dai_q6_slimbus_1_tx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_slimbus_1_tx_dai, 1);
 		break;
 	case SLIMBUS_2_RX:
-		rc = snd_soc_register_dai(&pdev->dev,
-				&msm_dai_q6_slimbus_2_rx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_slimbus_2_rx_dai, 1);
 		break;
 	case SLIMBUS_2_TX:
-		rc = snd_soc_register_dai(&pdev->dev,
-				&msm_dai_q6_slimbus_2_tx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_slimbus_2_tx_dai, 1);
 		break;
 	case SLIMBUS_3_RX:
-		rc = snd_soc_register_dai(&pdev->dev,
-				&msm_dai_q6_slimbus_3_rx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_slimbus_3_rx_dai, 1);
 		break;
 	case INT_BT_SCO_RX:
-		rc = snd_soc_register_dai(&pdev->dev,
-					&msm_dai_q6_bt_sco_rx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_bt_sco_rx_dai, 1);
 		break;
 	case INT_BT_SCO_TX:
-		rc = snd_soc_register_dai(&pdev->dev,
-					&msm_dai_q6_bt_sco_tx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_bt_sco_tx_dai, 1);
 		break;
 	case INT_FM_RX:
-		rc = snd_soc_register_dai(&pdev->dev, &msm_dai_q6_fm_rx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_fm_rx_dai, 1);
 		break;
 	case INT_FM_TX:
-		rc = snd_soc_register_dai(&pdev->dev, &msm_dai_q6_fm_tx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_fm_tx_dai, 1);
 		break;
 	case RT_PROXY_DAI_001_RX:
 	case RT_PROXY_DAI_002_RX:
-		rc = snd_soc_register_dai(&pdev->dev, &msm_dai_q6_afe_rx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_afe_rx_dai, 1);
 		break;
 	case RT_PROXY_DAI_001_TX:
 	case RT_PROXY_DAI_002_TX:
-		rc = snd_soc_register_dai(&pdev->dev, &msm_dai_q6_afe_tx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_afe_tx_dai, 1);
 		break;
 	case VOICE_PLAYBACK_TX:
-		rc = snd_soc_register_dai(&pdev->dev,
-					&msm_dai_q6_voice_playback_tx_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_voice_playback_tx_dai, 1);
 		break;
 	case VOICE_RECORD_RX:
 	case VOICE_RECORD_TX:
-		rc = snd_soc_register_dai(&pdev->dev,
-						&msm_dai_q6_incall_record_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_incall_record_dai, 1);
 		break;
 	case PSEUDOPORT_01:
-		rc = snd_soc_register_dai(&pdev->dev,
-					&msm_dai_q6_pseudo_dai);
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_pseudo_dai, 1);
 		break;
 	default:
 		rc = -ENODEV;
@@ -1951,7 +1961,7 @@ static int msm_dai_q6_dev_probe(struct platform_device *pdev)
 
 static int msm_dai_q6_dev_remove(struct platform_device *pdev)
 {
-	snd_soc_unregister_dai(&pdev->dev);
+	snd_soc_unregister_component(&pdev->dev);
 	return 0;
 }
 
@@ -1979,7 +1989,8 @@ static int msm_dai_q6_mi2s_dev_probe(struct platform_device *pdev)
 
 	dai_data->rate_constraint.count = 1;
 	dai_data->bitwidth_constraint.count = 1;
-	rc = snd_soc_register_dai(&pdev->dev, &msm_dai_q6_mi2s_dai);
+	rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+				&msm_dai_q6_mi2s_dai, 1);
 
 	if (IS_ERR_VALUE(rc))
 		goto err_pdata;
@@ -1996,7 +2007,7 @@ rtn:
 
 static int msm_dai_q6_mi2s_dev_remove(struct platform_device *pdev)
 {
-	snd_soc_unregister_dai(&pdev->dev);
+	snd_soc_unregister_component(&pdev->dev);
 	return 0;
 }
 

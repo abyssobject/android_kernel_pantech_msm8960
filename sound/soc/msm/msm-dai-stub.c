@@ -17,6 +17,10 @@
 #include <sound/pcm.h>
 #include <sound/soc.h>
 
+static const struct snd_soc_component_driver msm_dai_stub_component = {
+	.name		= "msm-dai-stub",
+};
+
 static int msm_dai_stub_set_channel_map(struct snd_soc_dai *dai,
 		unsigned int tx_num, unsigned int *tx_slot,
 		unsigned int rx_num, unsigned int *rx_slot)
@@ -58,7 +62,8 @@ static int msm_dai_stub_dev_probe(struct platform_device *pdev)
 
 	dev_dbg(&pdev->dev, "dev name %s\n", dev_name(&pdev->dev));
 
-	rc = snd_soc_register_dai(&pdev->dev, &msm_dai_stub_dai);
+	rc = snd_soc_register_component(&pdev->dev, &msm_dai_stub_component,
+				&msm_dai_stub_dai, 1);
 
 	return rc;
 }
@@ -67,7 +72,7 @@ static int msm_dai_stub_dev_remove(struct platform_device *pdev)
 {
 	pr_debug("%s:\n", __func__);
 
-	snd_soc_unregister_dai(&pdev->dev);
+	snd_soc_unregister_component(&pdev->dev);
 
 	return 0;
 }

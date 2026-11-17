@@ -521,7 +521,7 @@ static int mipi_d2l_set_tn_clk(struct pwm_device *pwm, u32 usec)
 	}
 
 	if (is_tn_pwm_enabled) {
-		pwm_disabled(pwm);
+		pwm_disable(pwm);
 		is_tn_pwm_enabled = 0;
 	}
 

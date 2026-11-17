@@ -23,6 +23,19 @@
 #include <linux/mfd/pm8xxx/core.h>
 #include <linux/mfd/pm8xxx/regulator.h>
 
+static struct regulator_dev *pm8xxx_vreg_register(const struct regulator_desc *desc,
+		struct device *dev, const struct regulator_init_data *init_data,
+		void *driver_data)
+{
+	struct regulator_config config = {
+		.dev		= dev,
+		.init_data	= init_data,
+		.driver_data	= driver_data,
+	};
+
+	return regulator_register(desc, &config);
+}
+
 /* Debug Flag Definitions */
 enum {
 	PM8XXX_VREG_DEBUG_REQUEST	= BIT(0),
@@ -3269,8 +3282,8 @@ static int pm8xxx_vreg_probe(struct platform_device *pdev)
 		goto bail;
 
 	if (!core_data->is_pin_controlled) {
-		vreg->rdev = regulator_register(rdesc, &pdev->dev,
-				&(pdata->init_data), vreg, NULL);
+		vreg->rdev = pm8xxx_vreg_register(rdesc, &pdev->dev,
+				&(pdata->init_data), vreg);
 		if (IS_ERR(vreg->rdev)) {
 			rc = PTR_ERR(vreg->rdev);
 			vreg->rdev = NULL;
@@ -3278,8 +3291,8 @@ static int pm8xxx_vreg_probe(struct platform_device *pdev)
 				vreg->rdesc.name, rc);
 		}
 	} else {
-		vreg->rdev_pc = regulator_register(rdesc, &pdev->dev,
-				&(pdata->init_data), vreg, NULL);
+		vreg->rdev_pc = pm8xxx_vreg_register(rdesc, &pdev->dev,
+				&(pdata->init_data), vreg);
 		if (IS_ERR(vreg->rdev_pc)) {
 			rc = PTR_ERR(vreg->rdev_pc);
 			vreg->rdev_pc = NULL;

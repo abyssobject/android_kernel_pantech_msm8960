@@ -453,11 +453,13 @@ static inline int get_dt_irq_prop(void)
 	struct device_node *np = NULL;
 	int err = -1;
 
+#ifdef CONFIG_OF
 	np = of_find_matching_node(NULL, cpu_pmu_of_device_ids);
 	if (np)
 		err = of_property_read_bool(np, "qcom,irq-is-percpu");
 	else
 		pr_err("Perf: can't find DT node.\n");
+#endif
 
 	return err;
 }

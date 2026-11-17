@@ -25,6 +25,19 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/msm-gpio-regulator.h>
 
+static struct regulator_dev *gpio_vreg_register(const struct regulator_desc *desc,
+		struct device *dev, const struct regulator_init_data *init_data,
+		void *driver_data)
+{
+	struct regulator_config config = {
+		.dev		= dev,
+		.init_data	= init_data,
+		.driver_data	= driver_data,
+	};
+
+	return regulator_register(desc, &config);
+}
+
 struct gpio_vreg {
 	struct regulator_desc	desc;
 	struct regulator_dev	*rdev;
@@ -154,8 +167,8 @@ static int gpio_vreg_probe(struct platform_device *pdev)
 	vreg->desc.type		= REGULATOR_VOLTAGE;
 	vreg->desc.owner	= THIS_MODULE;
 
-	vreg->rdev = regulator_register(&vreg->desc, &pdev->dev,
-					&pdata->init_data, vreg, NULL);
+	vreg->rdev = gpio_vreg_register(&vreg->desc, &pdev->dev,
+					&pdata->init_data, vreg);
 	if (IS_ERR(vreg->rdev)) {
 		rc = PTR_ERR(vreg->rdev);
 		pr_err("%s: regulator_register failed, rc=%d.\n", vreg->name,
