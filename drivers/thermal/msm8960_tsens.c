@@ -1028,9 +1028,12 @@ static int tsens_tm_probe(struct platform_device *pdev)
 		snprintf(name, sizeof(name), "tsens_tz_sensor%d", i);
 		tmdev->sensor[i].mode = THERMAL_DEVICE_ENABLED;
 		tmdev->sensor[i].sensor_num = i;
+		/* 3.10 API: (type, trips, writable-trip mask, devdata, ops,
+		 * tzp, passive_delay, polling_delay) */
 		tmdev->sensor[i].tz_dev = thermal_zone_device_register(name,
-				TSENS_TRIP_NUM, &tmdev->sensor[i],
-				&tsens_thermal_zone_ops, 0, 0, 0, 0);
+				TSENS_TRIP_NUM, (1 << TSENS_TRIP_NUM) - 1,
+				&tmdev->sensor[i], &tsens_thermal_zone_ops,
+				NULL, 0, 0);
 		if (IS_ERR(tmdev->sensor[i].tz_dev)) {
 			pr_err("%s: thermal_zone_device_register() failed.\n",
 			__func__);
