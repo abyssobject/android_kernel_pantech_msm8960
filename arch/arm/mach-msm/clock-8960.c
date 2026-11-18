@@ -5343,7 +5343,12 @@ static struct clk_lookup msm_clocks_8064[] = {
 	CLK_LOOKUP("core_clk",		gsbi5_qup_clk.c,	"spi_qsd.0"),
 	CLK_LOOKUP("core_clk",		gsbi5_qup_clk.c,	"qup_i2c.5"),
 	CLK_LOOKUP("core_clk",		gsbi6_qup_clk.c,	"spi_qsd.1"),
+#ifdef CONFIG_SKY_DMB_SPI_HW
+	/* Pantech: DMB tuner on GSBI7 QUP SPI (as in 3.4 cust/clock-sky.c) */
+	CLK_LOOKUP("core_clk",		gsbi7_qup_clk.c,	"spi_qsd.7"),
+#else
 	CLK_LOOKUP("core_clk",		gsbi7_qup_clk.c,	""),
+#endif
 	CLK_LOOKUP("core_clk",		pdm_clk.c,		""),
 	CLK_LOOKUP("mem_clk",		pmem_clk.c,		"msm_sps"),
 	CLK_LOOKUP("core_clk",          prng_clk.c,		"msm_rng.0"),
@@ -5384,8 +5389,17 @@ static struct clk_lookup msm_clocks_8064[] = {
 	CLK_LOOKUP("iface_clk",		gsbi3_p_clk.c,		"qup_i2c.3"),
 	CLK_LOOKUP("iface_clk",		gsbi4_p_clk.c,		"qup_i2c.4"),
 	CLK_LOOKUP("iface_clk",		gsbi5_p_clk.c,	"msm_serial_hsl.2"),
+#ifndef CONFIG_PANTECH_GSBI5_UART_CONSOLE
+	/*
+	 * Not with the console on GSBI5: a QUP SPI/I2C probe on GSBI5 would
+	 * switch the GSBI protocol away from UART (3.4 cust/clock-sky.c
+	 * left these out for the same reason).
+	 */
 	CLK_LOOKUP("iface_clk",		gsbi5_p_clk.c,		"spi_qsd.0"),
 	CLK_LOOKUP("iface_clk",		gsbi5_p_clk.c,		"qup_i2c.5"),
+#elif defined(CONFIG_PIEZO)
+	CLK_LOOKUP("iface_clk",		gsbi5_p_clk.c,		"qup_i2c.5"),
+#endif
 	CLK_LOOKUP("iface_clk",		gsbi6_p_clk.c,	"msm_serial_hs.0"),
 	CLK_LOOKUP("iface_clk",		gsbi6_p_clk.c,		"spi_qsd.1"),
 #ifdef CONFIG_PANTECH_GSBI5_UART_CONSOLE
@@ -5395,6 +5409,9 @@ static struct clk_lookup msm_clocks_8064[] = {
 	CLK_LOOKUP("iface_clk",		gsbi7_p_clk.c,	"msm_serial_hsl.0"),
 #endif
 	CLK_LOOKUP("iface_clk",		gsbi7_p_clk.c,	"msm_serial_hsl.4"),
+#ifdef CONFIG_SKY_DMB_SPI_HW
+	CLK_LOOKUP("iface_clk",		gsbi7_p_clk.c,		"spi_qsd.7"),
+#endif
 	CLK_LOOKUP("ref_clk",	tsif_ref_clk.c,	"msm_tspp.0"),
 	CLK_LOOKUP("iface_clk",		tsif_p_clk.c,		"msm_tspp.0"),
 	CLK_LOOKUP("iface_clk",		usb_fs1_p_clk.c,	""),
@@ -5414,6 +5431,16 @@ static struct clk_lookup msm_clocks_8064[] = {
 	CLK_LOOKUP("iface_clk",		pmic_arb1_p_clk.c,	""),
 	CLK_LOOKUP("core_clk",		pmic_ssbi2_clk.c,	""),
 	CLK_LOOKUP("mem_clk",		rpm_msg_ram_p_clk.c,	""),
+	/* Pantech sensors (as in 3.4 cust/clock-sky.c) */
+#ifdef CONFIG_PANTECH_CAMERA_CE1502
+	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"4-0078"),
+#endif
+#ifdef CONFIG_PANTECH_CAMERA_YACD5C1SBDBC
+	CLK_LOOKUP("cam_clk",		cam2_clk.c,	"4-0040"),
+#endif
+#ifdef CONFIG_PANTECH_CAMERA_AS0260
+	CLK_LOOKUP("cam_clk",		cam2_clk.c,	"4-a090"),
+#endif
 	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"4-001a"),
 	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"4-0010"),
 	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"4-0034"),

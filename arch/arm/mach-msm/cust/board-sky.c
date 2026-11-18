@@ -3095,7 +3095,15 @@ static struct platform_device *common_i2s_devices[] __initdata = {
 static struct platform_device *early_common_devices[] __initdata = {
 	&apq8064_device_acpuclk,
 	&apq8064_device_dmov,
+#ifndef CONFIG_PANTECH_GSBI5_UART_CONSOLE
+	/*
+	 * GSBI5 carries the console UART on Pantech boards.  On 3.4 this
+	 * SPI device never probed (clock-sky.c gave it no iface_clk); the
+	 * 3.10 clock table does, so the QUP SPI probe would rewrite the
+	 * GSBI5 protocol register to SPI under the live console.
+	 */
 	&apq8064_device_qup_spi_gsbi5,
+#endif
 #ifdef CONFIG_SKY_DMB_SPI_HW
 	&apq8064_device_qup_spi_gsbi7,
 #endif
