@@ -147,6 +147,15 @@ void __init ef52_bootwd_early_init(void)
 	if (!wd_timeout)
 		return;
 
+	/*
+	 * While the boot is being watched, a kernel panic (panic_timeout
+	 * restart without a command) must not boot this kernel again either:
+	 * ask for recovery, as the savelog mode does.  This is what makes a
+	 * panic before the first initcall end in recovery instead of a reset
+	 * loop.  Userspace disarming the watchdog restores the default.
+	 */
+	msm_restart_crash_to_recovery = 1;
+
 	/* previous reset was not a clean restart: see the comment on top */
 	if ((r & 0xFF000000) == SYS_RESET_REASON_MASK &&
 	    (r & 0xF0) != (SYS_RESET_REASON_NORMAL_MASK & 0xF0)) {
@@ -296,6 +305,7 @@ static ssize_t ef52_bootwd_write(struct file *file, const char __user *ubuf,
 	wd_armed = false;
 	del_timer_sync(&wd_timer);
 	hwdog_stop();
+	msm_restart_crash_to_recovery = 0;
 	pr_info("disarmed by %s/%d\n", current->comm, task_pid_nr(current));
 	return count;
 }
