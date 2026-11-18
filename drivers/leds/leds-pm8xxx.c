@@ -995,13 +995,20 @@ static int pm8xxx_led_probe(struct platform_device *pdev)
 	return 0;
 
 fail_id_check:
-	if (i > 0) {
-		for (i = i - 1; i >= 0; i--) {
-			mutex_destroy(&led[i].lock);
+	/*
+	 * ef52: the LED that failed may already be registered (PWM setup
+	 * fails after led_classdev_register()); it must be unregistered
+	 * before the array is freed, and the work it may have scheduled
+	 * must not run on freed memory.
+	 */
+	for (; i >= 0; i--) {
+		if (led[i].cdev.dev) {
 			led_classdev_unregister(&led[i].cdev);
-			if (led[i].pwm_dev != NULL)
-				pwm_free(led[i].pwm_dev);
+			cancel_work_sync(&led[i].work);
 		}
+		if (led[i].pwm_dev != NULL)
+			pwm_free(led[i].pwm_dev);
+		mutex_destroy(&led[i].lock);
 	}
 	kfree(led);
 	return rc;

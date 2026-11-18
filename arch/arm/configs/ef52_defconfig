@@ -4099,3 +4099,4 @@ CONFIG_MSM_AVTIMER=y
 CONFIG_KPROBE_EVENT=y
 # external MDM9x15 over HSIC (mdm2/mdm_common; built for every ARCH_MSM8960 kernel in 3.4)
 CONFIG_EXTERNAL_MDM=y
+CONFIG_PWM=y
