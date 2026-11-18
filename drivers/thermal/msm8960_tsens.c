@@ -523,13 +523,15 @@ static int tsens_tz_notify(struct thermal_zone_device *thermal,
 }
 
 static int tsens_tz_set_trip_temp(struct thermal_zone_device *thermal,
-				   int trip, long temp)
+				   int trip, unsigned long temp)
 {
 	struct tsens_tm_device_sensor *tm_sensor = thermal->devdata;
 	unsigned int reg_th, reg_cntl;
 	int code, hi_code, lo_code, code_err_chk;
 
-	code_err_chk = code = tsens_tz_degC_to_code(temp,
+	/* 3.10 thermal core passes the trip temperature as unsigned long;
+	 * the value is still degC and is converted as a signed int as in 3.4 */
+	code_err_chk = code = tsens_tz_degC_to_code((int)temp,
 					tm_sensor->sensor_num);
 	if (!tm_sensor || trip < 0)
 		return -EINVAL;
