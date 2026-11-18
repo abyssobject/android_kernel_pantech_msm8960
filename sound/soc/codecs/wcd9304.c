@@ -5024,7 +5024,7 @@ static int sitar_mbhc_init_and_calibrate(struct snd_soc_codec *codec)
 	rc = request_threaded_irq(sitar->mbhc_cfg.gpio_irq,
 				NULL,
 				sitar_mechanical_plug_detect_irq,
-				(IRQF_TRIGGER_RISING |
+				IRQF_ONESHOT | (IRQF_TRIGGER_RISING |
 				IRQF_TRIGGER_FALLING),
 				"sitar-hs-gpio", codec);
 

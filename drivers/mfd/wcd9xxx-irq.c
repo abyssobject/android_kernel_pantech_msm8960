@@ -500,7 +500,7 @@ int wcd9xxx_request_irq(struct wcd9xxx_core_resource *wcd9xxx_res,
 	set_irq_noprobe(virq);
 #endif
 
-	return request_threaded_irq(virq, NULL, handler, IRQF_TRIGGER_RISING,
+	return request_threaded_irq(virq, NULL, handler, IRQF_ONESHOT | IRQF_TRIGGER_RISING,
 				    name, data);
 }
 

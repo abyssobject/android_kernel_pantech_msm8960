@@ -2838,7 +2838,7 @@ static int smb347_charger_probe(struct platform_device *pdev)
 	
 #ifdef USE_SMB347_CABLE_DETECTION	
 	rc = request_threaded_irq(gpio_to_irq(SC_INOK), NULL, smb347_chg_detection_handler, 
-			IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+			IRQF_ONESHOT | IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
 			"smb347_chg_dectect", chip);
 	if(rc) {
 		pr_err("%s request_threaded_irq failed for %d rc =%d\n", __func__, SC_INOK, rc);
@@ -2847,7 +2847,7 @@ static int smb347_charger_probe(struct platform_device *pdev)
 #endif
 
 	rc = request_threaded_irq(gpio_to_irq(SC_STAT), NULL, smb347_chg_status_handler, 
-			IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING, "smb347_chg_status", chip);
+			IRQF_ONESHOT | IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING, "smb347_chg_status", chip);
 	if(rc) {
 		pr_err("%s request_threaded_irq failed for %d rc =%d\n", __func__, SC_STAT, rc);
 		goto unregister_batt;
@@ -2855,7 +2855,7 @@ static int smb347_charger_probe(struct platform_device *pdev)
 
 #ifdef USE_APQ_WAKEUP_MPP
 	rc = request_threaded_irq(chip->wakeup_irq, NULL, smb347_wakeup_handler, 
-			IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING, "smb347_wakeup_irq", chip);
+			IRQF_ONESHOT | IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING, "smb347_wakeup_irq", chip);
 	if(rc) {
 		pr_err("%s request_threaded_irq failed for %d rc =%d\n", __func__, chip->wakeup_irq, rc);
 		goto unregister_batt;
