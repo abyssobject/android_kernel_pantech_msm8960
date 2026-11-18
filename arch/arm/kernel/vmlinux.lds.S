@@ -275,6 +275,18 @@ SECTIONS
 		DATA_DATA
 		CONSTRUCTORS
 
+		/*
+		 * The Android toolchain builds the kernel as PIC, which puts
+		 * all initialised data that needs a relocation (anything
+		 * holding a pointer) into .data.rel*.  Without an input
+		 * section rule the linker places them as orphan sections
+		 * after "_edata = .; __bss_start = .;", i.e. inside
+		 * [__bss_start, _end), and __mmap_switched then clears them
+		 * with the BSS before start_kernel() runs.
+		 */
+		*(.data.rel .data.rel.*)
+		*(.got.plt)
+
 		_edata = .;
 	}
 	_edata_loc = __data_loc + SIZEOF(.data);
@@ -355,3 +367,8 @@ ASSERT((__arch_info_end - __arch_info_begin), "no machine record defined")
  * The above comment applies as well.
  */
 ASSERT(((__hyp_idmap_text_end - __hyp_idmap_text_start) <= PAGE_SIZE), "HYP init code too big")
+/*
+ * Nothing but alignment padding may sit between __bss_start and .bss:
+ * head-common.S clears everything from __bss_start to _end.
+ */
+ASSERT(((ADDR(.bss) - __bss_start) < PAGE_SIZE), "initialised data (orphan section?) between __bss_start and .bss")
