@@ -486,7 +486,9 @@ int avtab_read_item(struct avtab *a, void *fp, struct policydb *pol,
 	if (!policydb_type_isvalid(pol, key.source_type) ||
 	    !policydb_type_isvalid(pol, key.target_type) ||
 	    !policydb_class_isvalid(pol, key.target_class)) {
-		printk(KERN_ERR "SELinux: avtab: invalid type or class\n");
+		printk(KERN_ERR "SELinux: avtab: invalid type or class (src %u tgt %u cls %u spec 0x%x; types %u classes %u)\n",
+		       key.source_type, key.target_type, key.target_class, key.specified,
+		       pol->p_types.nprim, pol->p_classes.nprim);
 		return -EINVAL;
 	}
 
