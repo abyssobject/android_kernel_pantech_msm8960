@@ -315,10 +315,39 @@ static void msm_restart_prepare(const char *cmd)
 	outer_flush_all();
 }
 
+/*
+ * arm_pm_restart points here as soon as setup_arch() has created the static
+ * mappings, but restart_reason and msm_tmr0_base are only set by an early
+ * initcall.  A panic in between (mm_init, init_IRQ, time_init, ...) used to
+ * fault on the NULL pointers inside the restart, recurse into panic() and
+ * hang for good instead of resetting.  Both live in statically mapped
+ * regions, so fill them in on demand.
+ */
+static void msm_restart_early_fixup(void)
+{
+	if (use_restart_v2())
+		return;
+
+	if (!restart_reason)
+		restart_reason = MSM_IMEM_BASE + RESTART_REASON_ADDR;
+
+	if (!msm_tmr0_base) {
+#ifdef MSM_TMR0_BASE
+		/* same choice as global_timer_offset in msm_timer_init() */
+		if (cpu_is_msm8x60() || soc_class_is_msm8960() ||
+		    soc_class_is_apq8064() || soc_class_is_msm8930())
+			msm_tmr0_base = MSM_TMR0_BASE;
+		else
+#endif
+			msm_tmr0_base = MSM_TMR_BASE;
+	}
+}
+
 void msm_restart(char mode, const char *cmd)
 {
 	printk(KERN_NOTICE "Going down for restart now\n");
 
+	msm_restart_early_fixup();
 	msm_restart_prepare(cmd);
 
 	if (!use_restart_v2()) {
