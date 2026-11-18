@@ -5457,6 +5457,15 @@ static struct clk_lookup msm_clocks_8064[] = {
 	CLK_LOOKUP("csi_phy_clk",	csi0_phy_clk.c,		"msm_csid.0"),
 	CLK_LOOKUP("csi_phy_clk",	csi1_phy_clk.c,		"msm_csid.1"),
 	CLK_LOOKUP("csi_phy_clk",	csi2_phy_clk.c,		"msm_csid.2"),
+	/*
+	 * camera_v1 msm_ispif.c (ispif_8960_clk_info) requests these for
+	 * msm_ispif.0; the 3.4 tables had them, the 3.10 8064 table lost them.
+	 */
+	CLK_LOOKUP("csi_pix_clk",	csi_pix_clk.c,		"msm_ispif.0"),
+	CLK_LOOKUP("csi_pix1_clk",	csi_pix1_clk.c,		"msm_ispif.0"),
+	CLK_LOOKUP("csi_rdi_clk",	csi_rdi_clk.c,		"msm_ispif.0"),
+	CLK_LOOKUP("csi_rdi1_clk",	csi_rdi1_clk.c,		"msm_ispif.0"),
+	CLK_LOOKUP("csi_rdi2_clk",	csi_rdi2_clk.c,		"msm_ispif.0"),
 	CLK_LOOKUP("csiphy_timer_src_clk",
 			   csiphy_timer_src_clk.c, "msm_csiphy.0"),
 	CLK_LOOKUP("csiphy_timer_src_clk",
