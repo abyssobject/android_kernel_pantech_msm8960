@@ -3173,6 +3173,7 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	struct binder_thread *thread;
 	unsigned int size = _IOC_SIZE(cmd);
 	void __user *ubuf = (void __user *)arg;
+	bool ctx_mgr_secctx = false;
 
 	/*pr_info("binder_ioctl: %d:%d %x %lx\n", proc->pid, current->pid, cmd, arg);*/
 
@@ -3244,6 +3245,22 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			goto err;
 		}
 		break;
+	case BINDER_SET_CONTEXT_MGR_EXT: {
+		/*
+		 * ef52: Android 16 servicemanager requires the caller's
+		 * security context on every transaction (it aborts without
+		 * it); upstream 4.20 "binder: add support for sending
+		 * security context to the context manager".
+		 */
+		struct flat_binder_object fbo;
+
+		if (copy_from_user(&fbo, ubuf, sizeof(fbo))) {
+			ret = -EINVAL;
+			goto err;
+		}
+		ctx_mgr_secctx = !!(fbo.flags & FLAT_BINDER_FLAG_TXN_SECURITY_CTX);
+	}
+		/* fall through */
 	case BINDER_SET_CONTEXT_MGR:
 		if (context->binder_context_mgr_node) {
 			pr_err("BINDER_SET_CONTEXT_MGR already set\n");
@@ -3274,6 +3291,7 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		context->binder_context_mgr_node->local_strong_refs++;
 		context->binder_context_mgr_node->has_strong_ref = 1;
 		context->binder_context_mgr_node->has_weak_ref = 1;
+		context->binder_context_mgr_node->txn_security_ctx = ctx_mgr_secctx;
 		break;
 	case BINDER_THREAD_EXIT:
 		binder_debug(BINDER_DEBUG_THREADS, "%d:%d exit\n",
