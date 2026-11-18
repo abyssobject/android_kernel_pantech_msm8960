@@ -5099,7 +5099,16 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	motg->usb_psy.property_is_writeable
 		= otg_power_property_is_writeable_usb;
 
+#ifdef CONFIG_PANTECH_SMB347_CHARGER
+	/*
+	 * ef52: the SMB347 charger driver owns the "usb" power supply (as with
+	 * the 3.4 msm_otg, which registered none). Registering a second one made
+	 * the charger probe fail with -EEXIST: no charging at all on 3.10.
+	 */
+	if (1) {
+#else
 	if (!pm8921_charger_register_vbus_sn(NULL)) {
+#endif
 		/* if pm8921 use legacy implementation */
 		dev_dbg(motg->phy.dev, "%s: legacy support\n", __func__);
 		legacy_power_supply = true;
