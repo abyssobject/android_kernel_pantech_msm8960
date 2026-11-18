@@ -224,8 +224,10 @@ static int rmi_i2c_read(struct rmi_phys_device *phys, u16 addr, u8 *buf)
 
 static int acquire_attn_irq(struct rmi_i2c_data *data)
 {
+	/* 3.10 refuses a NULL primary handler without IRQF_ONESHOT */
 	return request_threaded_irq(data->irq, NULL, rmi_i2c_irq_thread,
-			data->irq_flags, dev_name(data->phys->dev), data->phys);
+			data->irq_flags | IRQF_ONESHOT,
+			dev_name(data->phys->dev), data->phys);
 }
 
 static int enable_device(struct rmi_phys_device *phys)

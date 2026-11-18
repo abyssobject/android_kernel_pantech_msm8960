@@ -318,6 +318,10 @@ void pet_watchdog(void)
 	unsigned long long slack_ns;
 	unsigned long long bark_time_ns = bark_time * 1000000ULL;
 
+	/* ef52: may be called (mdm crash shutdown) before the driver probed */
+	if (!enable || !msm_wdt_base)
+		return;
+
 	if (!enable)
 		return;
 
