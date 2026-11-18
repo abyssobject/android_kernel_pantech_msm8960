@@ -1230,6 +1230,7 @@ const int read_msm_cpu_type(void)
 		return MSM_CPU_8930;
 
 	case 0x510F06F0:
+	case 0x511F06F0: /* APQ8064 v2.x, e.g. the Pantech ef52 */
 		return MSM_CPU_8064;
 
 	case 0x511F06F1:

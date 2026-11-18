@@ -990,8 +990,20 @@ bool smem_initialized_check(void)
 	 * cannot be properly initialized.
 	 */
 	if (smem_get_version(MODEM_SBL_VERSION_INDEX) != SMEM_VERSION << 16) {
+#if defined(CONFIG_ARCH_MSM8960) || defined(CONFIG_ARCH_APQ8064)
+		/*
+		 * The 3.4 kernels of the 8960/8064 board file targets never
+		 * looked at the SBL version and use the same legacy heap
+		 * layout.  Refusing SMEM here would silently turn the SoC
+		 * into "unknown hardware" (dummy socinfo, wrong timer and
+		 * clock setup), so only complain.
+		 */
+		pr_warn("%s: unexpected SBL SMEM version 0x%x, continuing\n",
+			__func__, smem_get_version(MODEM_SBL_VERSION_INDEX));
+#else
 		pr_err("%s: SBL version not correct\n", __func__);
 		goto failed;
+#endif
 	}
 
 	is_inited = 1;
