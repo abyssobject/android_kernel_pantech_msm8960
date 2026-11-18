@@ -1162,6 +1162,15 @@ static int parse_cgroupfs_options(char *data, struct cgroup_sb_opts *opts)
 			opts->flags |= CGRP_ROOT_SANE_BEHAVIOR;
 			continue;
 		}
+		if (!strcmp(token, "cpuset_v2_mode")) {
+			/*
+			 * ef52: Android (libprocessgroup) always mounts cpuset with
+			 * cpuset_v2_mode (Linux 4.13). On this kernel offlined CPUs
+			 * are restored by the cpuset hotplug code anyway; accept and
+			 * ignore the option instead of failing the mount (-ENOENT).
+			 */
+			continue;
+		}
 		if (!strcmp(token, "noprefix")) {
 			opts->flags |= CGRP_ROOT_NOPREFIX;
 			continue;
