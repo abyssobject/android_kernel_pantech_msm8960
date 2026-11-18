@@ -172,6 +172,8 @@ static void pet_watchdog_work(struct work_struct *work);
 static void init_watchdog_work(struct work_struct *work);
 static DECLARE_DELAYED_WORK(dogwork_struct, pet_watchdog_work);
 static DECLARE_WORK(init_dogwork_struct, init_watchdog_work);
+/* ef52: high-priority, CPU-bound queue so the pet is not starved under load */
+static struct workqueue_struct *wdog_wq;
 
 /* Called from the FIQ bark handler */
 void msm_wdog_bark_fin(void)
@@ -342,7 +344,11 @@ static void pet_watchdog_work(struct work_struct *work)
 	pet_watchdog();
 
 	if (enable)
-		queue_delayed_work_on(0, system_highpri_wq, &dogwork_struct, delay_time);
+		if (!wdog_wq)
+		wdog_wq = alloc_workqueue("msm_watchdog", WQ_HIGHPRI, 1);
+	if (!wdog_wq)
+		wdog_wq = system_wq;
+	queue_delayed_work_on(0, wdog_wq, &dogwork_struct, delay_time);
 }
 
 static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
@@ -463,7 +469,7 @@ static void init_watchdog_work(struct work_struct *work)
 	__raw_writel(timeout, msm_wdt_base + WDT_BARK_TIME);
 	__raw_writel(timeout + 3*WDT_HZ, msm_wdt_base + WDT_BITE_TIME);
 
-	queue_delayed_work_on(0, system_highpri_wq, &dogwork_struct, delay_time);
+	queue_delayed_work_on(0, wdog_wq, &dogwork_struct, delay_time);
 
 	atomic_notifier_chain_register(&panic_notifier_list,
 				       &panic_blk);
