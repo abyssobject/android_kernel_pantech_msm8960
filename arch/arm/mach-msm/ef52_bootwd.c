@@ -101,6 +101,8 @@ static struct timer_list wd_timer;
 static bool hw_owned;			/* we started the hardware dog */
 static bool hw_handed_over;		/* msm_watchdog.c pets it now */
 
+extern void *restart_reason;
+
 static char recovery_cmd[] = "recovery";
 
 static int __init ef52_bootwd_setup(char *str)
@@ -167,6 +169,19 @@ void __init ef52_bootwd_early_init(void)
 		hw_owned = true;
 		pr_warn("hardware watchdog started (%d s bark)\n",
 			EF52_WDT_BARK_SECS);
+		/*
+		 * A watchdog bite cannot choose where the device goes, but
+		 * the boot-mode word in IMEM is read by the bootloader after
+		 * every warm reset.  Ask for recovery up front so that an
+		 * early hang ends in TWRP if the bootloader honours the word
+		 * after a watchdog reset (unverified).  A clean restart
+		 * rewrites it in msm_restart().
+		 */
+		if (restart_reason) {
+			__raw_writel(0x77665502, restart_reason);
+			mb();
+			pr_warn("boot-mode word preset to recovery\n");
+		}
 	}
 }
 
