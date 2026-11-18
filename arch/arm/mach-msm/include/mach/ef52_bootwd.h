@@ -21,9 +21,11 @@ extern struct task_struct *ef52_bootwd_cur_task;
 void ef52_bootwd_early_init(void);
 /* the regular MSM watchdog driver now owns (and pets) the hardware dog */
 void ef52_bootwd_hwdog_handover(void);
+void ef52_bootwd_check_restart(const char *cmd);
 #else
 static inline void ef52_bootwd_early_init(void) { }
 static inline void ef52_bootwd_hwdog_handover(void) { }
+static inline void ef52_bootwd_check_restart(const char *cmd) { }
 #endif
 
 #endif

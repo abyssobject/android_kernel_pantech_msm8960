@@ -134,6 +134,24 @@ static void hwdog_stop(void)
 	hw_owned = false;
 }
 
+/*
+ * A restart requested by userspace while the boot is still being watched
+ * (e.g. init's "reboot,bootloader,bootstrap-apexd-failed") would lose the
+ * kernel log and may loop or end in fastboot.  Turn it into a panic: the
+ * Pantech bootloader saves the log and the device comes back in recovery.
+ */
+void ef52_bootwd_check_restart(const char *cmd)
+{
+	if (!wd_armed || oops_in_progress)
+		return;
+	wd_armed = false;
+	msm_restart_crash_to_recovery = 1;
+	if (!panic_timeout)
+		panic_timeout = 1;
+	panic("ef52 boot watchdog: restart '%s' requested during the watched boot",
+	      cmd ? cmd : "");
+}
+
 void ef52_bootwd_hwdog_handover(void)
 {
 	hw_handed_over = true;

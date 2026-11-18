@@ -9,6 +9,11 @@
 #include <linux/utsname.h>
 #include <linux/mman.h>
 #include <linux/reboot.h>
+#ifdef CONFIG_EF52_BOOT_HANG_WD
+#include <mach/ef52_bootwd.h>
+#else
+static inline void ef52_bootwd_check_restart(const char *cmd) { }
+#endif
 #include <linux/prctl.h>
 #include <linux/highuid.h>
 #include <linux/fs.h>
@@ -515,6 +520,7 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 	mutex_lock(&reboot_mutex);
 	switch (cmd) {
 	case LINUX_REBOOT_CMD_RESTART:
+		ef52_bootwd_check_restart(NULL);
 		kernel_restart(NULL);
 		break;
 
@@ -553,6 +559,7 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 		}
 		buffer[sizeof(buffer) - 1] = '\0';
 
+		ef52_bootwd_check_restart(buffer);
 		kernel_restart(buffer);
 		break;
 
