@@ -607,9 +607,10 @@ static int pm8xxx_tm_probe(struct platform_device *pdev)
 	chip->tz_dev = thermal_zone_device_register(chip->cdata.tm_name, TRIP_NUM, 0,
 			chip, tz_ops, NULL, 0, 0);
 
-	if (chip->tz_dev == NULL) {
+	if (IS_ERR_OR_NULL(chip->tz_dev)) {
 		pr_err("thermal_zone_device_register() failed.\n");
-		rc = -ENODEV;
+		rc = chip->tz_dev ? PTR_ERR(chip->tz_dev) : -ENODEV;
+		chip->tz_dev = NULL;
 		goto err_fail_adc;
 	}
 
