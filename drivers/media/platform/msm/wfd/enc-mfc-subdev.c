@@ -1958,6 +1958,7 @@ static long venc_fill_outbuf(struct v4l2_subdev *sd, void *arg)
 	unsigned long kernel_vaddr, phy_addr, user_vaddr;
 	int pmem_fd;
 	struct file *file;
+	struct ion_handle *buff_handle = NULL;
 	s32 buffer_index = -1;
 
 	if (inst->streaming) {
@@ -1970,9 +1971,18 @@ static long venc_fill_outbuf(struct v4l2_subdev *sd, void *arg)
 			WFD_MSG_ERR("Address lookup failed\n");
 			goto err;
 		}
+		/*
+		 * The vidc core no longer keeps output buffers kernel-mapped;
+		 * it maps them on demand through the ion handle.
+		 */
+		vidc_get_fd_info(client_ctx, BUFFER_TYPE_OUTPUT,
+				pmem_fd, kernel_vaddr, buffer_index,
+				&buff_handle);
+
 		vcd_frame.virtual = (u8 *) kernel_vaddr;
 		vcd_frame.frm_clnt_data = mregion->cookie;
 		vcd_frame.alloc_len = mregion->size;
+		vcd_frame.buff_ion_handle = buff_handle;
 
 		rc = vcd_fill_output_buffer(client_ctx->vcd_handle, &vcd_frame);
 		if (rc)
