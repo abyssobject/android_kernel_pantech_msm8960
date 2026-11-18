@@ -7037,7 +7037,7 @@ static irqreturn_t tabla_dce_handler(int irq, void *data)
 					  msecs_to_jiffies(2)) == 0) {
 			WARN(1, "Button pressed twice without release"
 			     "event\n");
-			wcd9xxx_unlock_sleep(core);
+			wcd9xxx_unlock_sleep(core_res);
 		}
 #else
 		if (schedule_delayed_work(&priv->mbhc_btn_dwork,
