@@ -140,8 +140,36 @@ static void hwdog_stop(void)
  * kernel log and may loop or end in fastboot.  Turn it into a panic: the
  * Pantech bootloader saves the log and the device comes back in recovery.
  */
+/*
+ * After boot: a userspace restart that hangs (seen on the device: black
+ * screen, no USB, not even the power key works) leaves no trace. Guard it:
+ * if the restart has not reset the SoC within 20 s, panic, which saves the
+ * kernel log through the Pantech bootloader and comes back in recovery.
+ */
+static struct timer_list restart_guard;
+static char restart_guard_cmd[32];
+
+static void ef52_restart_guard_fire(unsigned long data)
+{
+	pr_emerg("restart '%s' did not complete within 20 s; blocked tasks:\n",
+		 restart_guard_cmd);
+	show_state_filter(TASK_UNINTERRUPTIBLE);
+	msm_restart_crash_to_recovery = 1;
+	if (!panic_timeout)
+		panic_timeout = 1;
+	panic("ef52: restart '%s' hung", restart_guard_cmd);
+}
+
 void ef52_bootwd_check_restart(const char *cmd)
 {
+	if (!wd_armed && !oops_in_progress) {
+		strlcpy(restart_guard_cmd, cmd ? cmd : "", sizeof(restart_guard_cmd));
+		setup_timer(&restart_guard, ef52_restart_guard_fire, 0);
+		mod_timer(&restart_guard, jiffies + 20 * HZ);
+		pr_info("restart '%s' requested; guard armed (20 s)\n",
+			restart_guard_cmd);
+		return;
+	}
 	if (!wd_armed || oops_in_progress)
 		return;
 	wd_armed = false;
