@@ -166,7 +166,18 @@ void ef52_bootwd_check_restart(const char *cmd)
 		strlcpy(restart_guard_cmd, cmd ? cmd : "", sizeof(restart_guard_cmd));
 		setup_timer(&restart_guard, ef52_restart_guard_fire, 0);
 		mod_timer(&restart_guard, jiffies + 20 * HZ);
-		pr_info("restart '%s' requested; guard armed (20 s)\n",
+		/*
+		 * Second guard for a hang with interrupts off (e.g. inside
+		 * machine_restart()): let the MSM watchdog bark at 30 s and
+		 * bite at 33 s. The bark panics through the FIQ handler.
+		 */
+		__raw_writel(0x1, EF52_WDT_EXPIRED_ENABLE);
+		__raw_writel(30 * EF52_WDT_HZ, EF52_WDT_BASE + EF52_WDT_BARK_TIME);
+		__raw_writel(33 * EF52_WDT_HZ, EF52_WDT_BASE + EF52_WDT_BITE_TIME);
+		__raw_writel(1, EF52_WDT_BASE + EF52_WDT_RST);
+		__raw_writel(1, EF52_WDT_BASE + EF52_WDT_EN);
+		mb();
+		pr_info("restart '%s' requested; guard armed (20 s timer, 30 s watchdog)\n",
 			restart_guard_cmd);
 		return;
 	}
