@@ -32,9 +32,15 @@
 #define ADM1_CRCI_GSBI6_RX_SEL         0x800
 #define ADM1_CRCI_GSBI6_TX_SEL         0x400
 
-#define MSM_ENABLE_UART_CLOCK 13
-#define MSM_DISABLE_UART_CLOCK 14
-#define MSM_GET_UART_CLOCK_STATUS 15
+/*
+ * UART clock control ioctls, as used by the Bluetooth vendor library
+ * (USERIAL_OP_CLK_ON/OFF/STATE) and by later CAF kernels.
+ */
+#include <asm/ioctls.h>
+
+#define MSM_ENABLE_UART_CLOCK		TIOCPMGET
+#define MSM_DISABLE_UART_CLOCK		TIOCPMPUT
+#define MSM_GET_UART_CLOCK_STATUS	TIOCPMACT
 
 enum msm_hsl_regs {
 	UARTDM_MR1,
