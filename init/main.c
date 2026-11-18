@@ -86,6 +86,10 @@
 #include <asm/smp.h>
 #endif
 
+#ifdef CONFIG_EF52_BOOT_HANG_WD
+#include <mach/ef52_bootwd.h>
+#endif
+
 static int kernel_init(void *);
 
 extern void init_IRQ(void);
@@ -699,10 +703,24 @@ int __init_or_module do_one_initcall(initcall_t fn)
 	int count = preempt_count();
 	int ret;
 
+#ifdef CONFIG_EF52_BOOT_HANG_WD
+	/* let the boot-hang watchdog name the initcall the boot is stuck in */
+	if (system_state == SYSTEM_BOOTING) {
+		ef52_bootwd_cur_task = current;
+		ef52_bootwd_cur_initcall_start = jiffies;
+		ef52_bootwd_cur_initcall = fn;
+	}
+#endif
+
 	if (initcall_debug)
 		ret = do_one_initcall_debug(fn);
 	else
 		ret = fn();
+
+#ifdef CONFIG_EF52_BOOT_HANG_WD
+	if (system_state == SYSTEM_BOOTING)
+		ef52_bootwd_cur_initcall = NULL;
+#endif
 
 	msgbuf[0] = 0;
 

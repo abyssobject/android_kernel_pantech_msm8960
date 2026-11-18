@@ -31,6 +31,7 @@
 #include <asm/cacheflush.h>
 #include <mach/scm.h>
 #include <mach/socinfo.h>
+#include <mach/ef52_bootwd.h>
 #include "msm_watchdog.h"
 #include "timer.h"
 
@@ -470,6 +471,8 @@ static void init_watchdog_work(struct work_struct *work)
 	__raw_writel(1, msm_wdt_base + WDT_EN);
 	__raw_writel(1, msm_wdt_base + WDT_RST);
 	last_pet = sched_clock();
+	/* an early boot-hang watchdog may have been petting the dog so far */
+	ef52_bootwd_hwdog_handover();
 
 	if (!has_vic)
 		enable_percpu_irq(msm_wdog_irq, IRQ_TYPE_EDGE_RISING);

@@ -23,6 +23,20 @@ config PANTECH
 	help
 	  Support PANTECH
 
+config EF52_BOOT_HANG_WD
+	bool "EF52 bring-up boot-hang watchdog (ef52_kbootwd=)"
+	depends on PANTECH_ERR_CRASH_LOGGING && MSM_NATIVE_RESTART && PROC_FS
+	default n
+	help
+	  Bring-up aid for a device that cannot be reset by key and has no
+	  ram_console.  Does nothing unless the kernel command line carries
+	  ef52_kbootwd=<seconds>[,savelog][,hwdog].  When userspace does not
+	  write 0 to /proc/ef52_kbootwd within that time, the kernel logs the
+	  initcall in progress, CPU backtraces and blocked tasks and resets
+	  the device once: into recovery by default, or (savelog) through
+	  panic() so that the Pantech bootloader stores the kernel log in the
+	  log partition.  See arch/arm/mach-msm/ef52_bootwd.c.
+
 #config PANTECH_VERIZON
 #	depends on
 #	bool
