@@ -96,7 +96,6 @@ CONFIG_CGROUPS=y
 CONFIG_CGROUP_FREEZER=y
 # CONFIG_CGROUP_DEVICE is not set
 # Legacy cpusets lose CPUs when autosmp hotplugs them; match followmsi-12.
-# CONFIG_CPUSETS is not set
 CONFIG_CGROUP_CPUACCT=y
 CONFIG_RESOURCE_COUNTERS=y
 # CONFIG_CGROUP_MEM_RES_CTLR is not set
@@ -4100,3 +4099,5 @@ CONFIG_KPROBE_EVENT=y
 # external MDM9x15 over HSIC (mdm2/mdm_common; built for every ARCH_MSM8960 kernel in 3.4)
 CONFIG_EXTERNAL_MDM=y
 CONFIG_PWM=y
+CONFIG_CPUSETS=y
+CONFIG_PROC_PID_CPUSET=y
