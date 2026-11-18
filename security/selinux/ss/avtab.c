@@ -515,9 +515,16 @@ int avtab_read_item(struct avtab *a, void *fp, struct policydb *pol,
 			printk(KERN_ERR "SELinux: avtab: truncated entry\n");
 			return rc;
 		}
+		/*
+		 * Android 16 policies carry nlmsg extended permissions
+		 * (specified == 3) in the regular N+ layout; they must not
+		 * switch the reader into the Android M layout (no driver
+		 * byte), which misaligns every following entry.
+		 */
 		if (avtab_android_m_compat ||
 			    ((xperms.specified != AVTAB_XPERMS_IOCTLFUNCTION) &&
 			    (xperms.specified != AVTAB_XPERMS_IOCTLDRIVER) &&
+			    (xperms.specified != AVTAB_XPERMS_NLMSG) &&
 			    (vers == POLICYDB_VERSION_XPERMS_IOCTL))) {
 			xperms.driver = xperms.specified;
 			if (android_m_compat_optype)
@@ -539,6 +546,9 @@ int avtab_read_item(struct avtab *a, void *fp, struct policydb *pol,
 		}
 		for (i = 0; i < ARRAY_SIZE(xperms.perms.p); i++)
 			xperms.perms.p[i] = le32_to_cpu(buf32[i]);
+		/* this kernel has no nlmsg xperm checks: drop the rule */
+		if (xperms.specified == AVTAB_XPERMS_NLMSG)
+			return 0;
 		datum.u.xperms = &xperms;
 	} else {
 		rc = next_entry(buf32, fp, sizeof(u32));
