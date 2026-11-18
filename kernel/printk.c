@@ -261,17 +261,64 @@ static u32 log_buf_len = __LOG_BUF_LEN;
 
 #ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
 /*
- * Vendor crash dump header. Note: since 3.5 the log buffer holds
- * variable-length records, klog_end_idx points at the index of the next
- * record instead of the old byte counter, so the 3.4 era dump tools see
- * the buffer but not the old plain-text layout.
+ * Vendor crash dump header.
+ *
+ * After an abnormal reset the Pantech bootloader copies klog_size raw bytes
+ * from klog_buf_address into SKYLOG/LOGn/xxx.TXT on the "log" partition (the
+ * saved files are byte-for-byte images of the 3.4 character ring, wrap point
+ * included).  Since 3.5 log_buf holds binary variable-length records, which
+ * would be saved as garbage, so keep a plain-text mirror with the 3.4 layout
+ * ("<prio>[   sec.usec] text\n" in a power-of-two character ring indexed by a
+ * free-running byte counter) and hand that to the bootloader instead.
  */
+#define PANTECH_KLOG_LEN	__LOG_BUF_LEN
+static char pantech_klog_buf[PANTECH_KLOG_LEN];
+static unsigned int pantech_klog_end;	/* like 3.4 log_end: never masked */
+static bool pantech_klog_open;		/* last record left its line open */
+
+static void pantech_klog_emit(const char *s, unsigned int n)
+{
+	unsigned int end = pantech_klog_end;
+
+	while (n--)
+		pantech_klog_buf[end++ & (PANTECH_KLOG_LEN - 1)] = *s++;
+	pantech_klog_end = end;
+}
+
+/* called from log_store() with logbuf_lock held */
+static void pantech_klog_store(int facility, int level, enum log_flags flags,
+			       u64 ts_nsec, const char *text, u16 text_len)
+{
+	char hdr[32];
+	unsigned long rem_nsec;
+	int n;
+
+	if (pantech_klog_open && (flags & LOG_PREFIX)) {
+		pantech_klog_emit("\n", 1);
+		pantech_klog_open = false;
+	}
+	if (!pantech_klog_open) {
+		rem_nsec = do_div(ts_nsec, 1000000000);
+		n = scnprintf(hdr, sizeof(hdr), "<%u>[%5lu.%06lu] ",
+			      (facility << 3) | (level & 7),
+			      (unsigned long)ts_nsec, rem_nsec / 1000);
+		pantech_klog_emit(hdr, n);
+	}
+	pantech_klog_emit(text, text_len);
+	if (flags & LOG_CONT) {
+		pantech_klog_open = true;
+	} else {
+		pantech_klog_emit("\n", 1);
+		pantech_klog_open = false;
+	}
+}
+
 static pantech_log_header dmesg_header;
 pantech_log_header *get_pantech_klog_dump_address(void)
 {
-	dmesg_header.klog_buf_address = (unsigned int *)virt_to_phys((void *)log_buf);
-	dmesg_header.klog_end_idx = (unsigned int *)virt_to_phys((void *)&log_next_idx);
-	dmesg_header.klog_size = (unsigned int)log_buf_len;
+	dmesg_header.klog_buf_address = (unsigned int *)virt_to_phys((void *)pantech_klog_buf);
+	dmesg_header.klog_end_idx = (unsigned int *)virt_to_phys((void *)&pantech_klog_end);
+	dmesg_header.klog_size = (unsigned int)PANTECH_KLOG_LEN;
 
 	return &dmesg_header;
 }
@@ -379,6 +426,10 @@ static void log_store(int facility, int level,
 		msg->ts_nsec = local_clock();
 	memset(log_dict(msg) + dict_len, 0, pad_len);
 	msg->len = sizeof(struct log) + text_len + dict_len + pad_len;
+
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+	pantech_klog_store(facility, level, flags, msg->ts_nsec, text, text_len);
+#endif
 
 	/* insert message */
 	log_next_idx += msg->len;

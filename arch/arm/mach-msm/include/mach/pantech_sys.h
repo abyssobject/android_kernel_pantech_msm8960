@@ -130,6 +130,9 @@ do { \
 **  Reset Reason API (Kernel Only)
 *******************************************************************************/
 extern void pantech_sys_reset_reason_init(void);
+extern void pantech_sys_reset_reason_early(void);
+extern void pantech_crash_log_early_init(void);
+extern unsigned int prev_reset_reason;
 extern void pantech_sys_reset_reason_set(unsigned int reason);
 extern void pantech_sys_reset_backlight_flag_set(unsigned int flag);
 extern unsigned int pantech_sys_reset_backlight_flag_get(void);

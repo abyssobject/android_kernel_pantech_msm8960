@@ -94,6 +94,10 @@
 #if defined(CONFIG_PANTECH_DEBUG)
 #include <mach/pantech_debug.h>
 #endif
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+#include <mach/pantech_sys.h>
+#endif
+#include <mach/ef52_bootwd.h>
 
 #include <linux/i2c-gpio.h>
 #if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_RMI4_PANTECH)
@@ -4422,6 +4426,11 @@ static void __init apq8064_common_init(void)
 
 static void __init apq8064_allocate_memory_regions(void)
 {
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+	/* crash logging for the bootloader, as early as the mappings allow */
+	pantech_crash_log_early_init();
+#endif
+	ef52_bootwd_early_init();
 	apq8064_allocate_fb_region();
 }
 

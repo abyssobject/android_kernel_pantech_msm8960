@@ -66,6 +66,9 @@
 static int restart_mode;
 void *restart_reason;
 
+/* a restart without command (panic) asks the bootloader for recovery */
+int msm_restart_crash_to_recovery;
+
 int pmic_reset_irq;
 static void __iomem *msm_tmr0_base;
 
@@ -296,6 +299,16 @@ static void msm_restart_prepare(const char *cmd)
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
+	} else {
+		/*
+		 * As in the 3.4 ef52 kernel: a restart without a command
+		 * (panic/emergency restart) must not leave a stale reason
+		 * (e.g. "recovery" of an earlier boot) in IMEM.  The boot-hang
+		 * watchdog asks for recovery so that its crash style reset
+		 * does not boot the hung kernel again.
+		 */
+		__raw_writel(msm_restart_crash_to_recovery ?
+			     0x77665502 : 0x77665501, restart_reason);
 	}
 
 	flush_cache_all();
@@ -359,6 +372,22 @@ static int __init msm_pmic_restart_init(void)
 }
 
 late_initcall(msm_pmic_restart_init);
+
+/*
+ * IMEM-only part of the setup, usable from the machine init_early hook:
+ * arm the download-mode cookie (the state the 3.4 kernel runs in from its
+ * early initcall on; a clean restart clears it again) and make
+ * restart_reason valid, so that a reset before the first initcall is
+ * already seen as an abnormal one by the boot chain.
+ */
+void __init msm_restart_early_init(void)
+{
+#ifdef CONFIG_MSM_DLOAD_MODE
+	dload_mode_addr = MSM_IMEM_BASE + DLOAD_MODE_ADDR;
+	set_dload_mode(download_mode);
+#endif
+	restart_reason = MSM_IMEM_BASE + RESTART_REASON_ADDR;
+}
 
 static int __init msm_restart_init(void)
 {

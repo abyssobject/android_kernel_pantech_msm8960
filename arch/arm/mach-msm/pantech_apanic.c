@@ -54,6 +54,7 @@
 #include <mach/pantech_sys_info.h>
 #include <linux/input.h>
 #include <mach/pantech_sys.h>
+#include <mach/restart.h>
 
 /*---------------------------------------------------------------------------------------------------
  ** Define
@@ -194,11 +195,17 @@ void set_pantech_dbg_buf_info(unsigned int* addr, unsigned int size)
 /*****************************************************
  * PNANTEH APANIC MODULE INIT
  * **************************************************/
-int __init pantech_apanic_init(void)
+static int klog_registered;
+
+/* Tell the bootloader (via SMEM_ID_VENDOR2) where the kernel log lives. */
+static int pantech_klog_register(void)
 {
     int ret;
 
 	pantech_log_header *klog_header;
+
+	if (klog_registered)
+		return 1;
 
 	klog_header = get_pantech_klog_dump_address();
 
@@ -214,8 +221,35 @@ int __init pantech_apanic_init(void)
 	crash_buf_header->klog_buf_address = klog_header->klog_buf_address;
 	crash_buf_header->klog_end_idx = klog_header->klog_end_idx;
 	crash_buf_header->klog_size = klog_header->klog_size;
+	klog_registered = 1;
 
 	printk("pantech_apanic : pantech_log_header initialized success for write to SMEM\n");
+	printk(KERN_INFO "pantech_apanic : klog buf 0x%08x end_idx 0x%08x size 0x%x\n",
+			(unsigned int)klog_header->klog_buf_address,
+			(unsigned int)klog_header->klog_end_idx,
+			klog_header->klog_size);
+	return 1;
+}
+
+/*
+ * Earliest possible crash logging setup, called by the board from its
+ * machine init_early hook (end of setup_arch(): the static SMEM and IMEM
+ * mappings exist, nothing else is needed).  The 3.4 kernel only registered
+ * the log buffer in a device initcall, so a boot that died before that left
+ * nothing for the bootloader to save.
+ */
+void __init pantech_crash_log_early_init(void)
+{
+#ifdef CONFIG_MSM_NATIVE_RESTART
+	msm_restart_early_init();
+#endif
+	pantech_sys_reset_reason_early();
+	pantech_klog_register();
+}
+
+int __init pantech_apanic_init(void)
+{
+	pantech_klog_register();
 
 	printk(KERN_INFO "apanic_pantech_init\n");
 	return 0;

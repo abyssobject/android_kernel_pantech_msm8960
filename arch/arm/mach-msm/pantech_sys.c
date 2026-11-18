@@ -139,14 +139,24 @@ static const struct file_operations pantech_resetinfo_fops = {
 	.llseek	= default_llseek,
 };
 
-void pantech_sys_reset_reason_init(void)
+/*
+ * IMEM part of the reset reason setup: remember what the previous boot left
+ * in the Pantech reset reason word and mark this boot as "abnormal" until a
+ * clean restart says otherwise.  It only needs the static IMEM mapping, so
+ * the board calls it from init_early (through pantech_crash_log_early_init())
+ * to have the bootloader's crash logging armed before the first initcall.
+ * Safe to call more than once; only the first call does anything.
+ */
+void pantech_sys_reset_reason_early(void)
 {
+	static int done;
 	unsigned int temp_usbdump_mode = 0x0;
 	unsigned int temp_ramdump_mode = 0x0;
     unsigned int temp_mdmdump_mode = 0x0;
 
-    // related with silent reboot - p16652
-    struct proc_dir_entry *oem_pm_power_on_info;
+	if (done)
+		return;
+	done = 1;
 
 	prev_reset_reason = GET_SYS_RESET_REASON_ALL;
 	printk(KERN_INFO "[%s] prev_reset_reason : 0x%08X\n",__func__, prev_reset_reason);
@@ -184,6 +194,14 @@ void pantech_sys_reset_reason_init(void)
     printk(KERN_INFO "[%s] ramdump_mode : %d, usbdump_mode : %d, mdmdump_mode : %d\n"
                 ,__func__, temp_ramdump_mode, temp_usbdump_mode, temp_mdmdump_mode);
     printk(KERN_INFO "[%s] silent_boot_mode_backlight :%d\n",__func__, silent_boot_mode_backlight);
+}
+
+void pantech_sys_reset_reason_init(void)
+{
+    // related with silent reboot - p16652
+    struct proc_dir_entry *oem_pm_power_on_info;
+
+	pantech_sys_reset_reason_early();
 
      /* section - related with silent reboot info */
     oem_pm_power_on_info = proc_create("pantech_resetinfo", S_IRUGO | S_IWUSR | S_IWGRP,
