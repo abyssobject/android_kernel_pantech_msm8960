@@ -68,6 +68,7 @@ static struct vsycn_ctrl {
 	struct completion ov_comp;
 	struct completion dmap_comp;
 	struct completion vsync_comp;
+	wait_queue_head_t vsync_wait;
 	spinlock_t spin_lock;
 	struct msm_fb_data_type *mfd;
 	struct mdp4_overlay_pipe *base_pipe;
@@ -524,6 +525,7 @@ static void primary_rdptr_isr(int cndx)
 
 	spin_lock(&vctrl->spin_lock);
 	vctrl->vsync_time = ktime_get();
+	wake_up_interruptible_all(&vctrl->vsync_wait);
 
 	if (vctrl->new_update) {
 		vctrl->new_update = 0;
@@ -669,41 +671,37 @@ static void clk_ctrl_work(struct work_struct *work)
 ssize_t mdp4_dsi_cmd_show_event(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	int cndx;
 	struct vsycn_ctrl *vctrl;
 	ssize_t ret = 0;
 	unsigned long flags;
 	u64 vsync_tick;
+	ktime_t timestamp;
 
-	cndx = 0;
 	vctrl = &vsync_ctrl_db[0];
 
-	if (atomic_read(&vctrl->suspend) > 0)
-		return 0;
-
+	/*
+	 * ef52: block until a new vsync arrives while vsync is enabled, as the
+	 * Pantech 3.4 driver does. The CAF 3.10 variant returned at once while
+	 * the panel was suspended (and a fake timestamp every 4 frames), so the
+	 * SCHED_FIFO hwcVsyncThread, which re-reads this file in a loop, spun
+	 * on a CPU for as long as the screen was off.
+	 */
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
-	if (vctrl->wait_vsync_cnt == 0)
-		INIT_COMPLETION(vctrl->vsync_comp);
-	vctrl->wait_vsync_cnt++;
+	timestamp = vctrl->vsync_time;
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
-	ret = wait_for_completion_interruptible_timeout(&vctrl->vsync_comp,
-		msecs_to_jiffies(VSYNC_PERIOD * 4));
-	if (ret <= 0) {
-		vctrl->wait_vsync_cnt = 0;
-		vsync_tick = ktime_to_ns(ktime_get());
-		ret = snprintf(buf, PAGE_SIZE, "VSYNC=%llu", vsync_tick);
-		buf[strlen(buf) + 1] = '\0';
+	ret = wait_event_interruptible(vctrl->vsync_wait,
+			!ktime_equal(timestamp, vctrl->vsync_time) &&
+			vctrl->vsync_enabled &&
+			!atomic_read(&vctrl->suspend));
+	if (ret == -ERESTARTSYS)
 		return ret;
-	}
 
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	vsync_tick = ktime_to_ns(vctrl->vsync_time);
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
-	ret = snprintf(buf, PAGE_SIZE, "VSYNC=%llu", vsync_tick);
-	pr_debug("%s: UEVENT\n", __func__);
-
+	ret = scnprintf(buf, PAGE_SIZE, "VSYNC=%llu", vsync_tick);
 	buf[strlen(buf) + 1] = '\0';
 	return ret;
 }
@@ -727,6 +725,7 @@ void mdp4_dsi_rdptr_init(int cndx)
 	init_completion(&vctrl->ov_comp);
 	init_completion(&vctrl->dmap_comp);
 	init_completion(&vctrl->vsync_comp);
+	init_waitqueue_head(&vctrl->vsync_wait);
 	spin_lock_init(&vctrl->spin_lock);
 	atomic_set(&vctrl->suspend, 1);
 	INIT_WORK(&vctrl->clk_work, clk_ctrl_work);
