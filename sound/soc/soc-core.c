@@ -1590,6 +1590,53 @@ static int snd_soc_init_codec_cache(struct snd_soc_codec *codec,
 	return 0;
 }
 
+
+/*
+ * Legacy (3.4 style) DPCM back ends: the MSM QDSP6 back-end CPU DAIs
+ * (msm-dai-q6.*) carry no stream names, so they get no DAPM DAI widget and
+ * dpcm_get_be() can never match them ("ASoC: no backend DAIs enabled").
+ * 3.4 matched a back end by its dai_link stream name against the routing
+ * platform's AIF widget sname; do that once here by pointing the BE CPU
+ * DAI's playback/capture widget at that AIF widget.
+ */
+static void soc_link_legacy_be_widgets(struct snd_soc_card *card)
+{
+	struct snd_soc_dapm_widget *w;
+	int i;
+
+	for (i = 0; i < card->num_rtd; i++) {
+		struct snd_soc_pcm_runtime *rtd = &card->rtd[i];
+		struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+		const char *sname = rtd->dai_link->stream_name;
+		bool play, cap;
+
+		if (!rtd->dai_link->no_pcm || !sname || !cpu_dai)
+			continue;
+
+		play = cpu_dai->driver->playback.channels_min &&
+			!cpu_dai->playback_widget;
+		cap = cpu_dai->driver->capture.channels_min &&
+			!cpu_dai->capture_widget;
+		if (!play && !cap)
+			continue;
+
+		list_for_each_entry(w, &card->widgets, list) {
+			if (!w->sname || strcmp(w->sname, sname))
+				continue;
+			if (play && w->id == snd_soc_dapm_aif_out) {
+				cpu_dai->playback_widget = w;
+				play = false;
+			} else if (cap && w->id == snd_soc_dapm_aif_in) {
+				cpu_dai->capture_widget = w;
+				cap = false;
+			}
+		}
+		dev_dbg(card->dev, "ASoC: legacy BE %s -> %s%s\n", sname,
+			cpu_dai->playback_widget ? cpu_dai->playback_widget->name : "",
+			cpu_dai->capture_widget ? cpu_dai->capture_widget->name : "");
+	}
+}
+
 static int snd_soc_instantiate_card(struct snd_soc_card *card)
 {
 	struct snd_soc_codec *codec;
@@ -1709,6 +1756,7 @@ static int snd_soc_instantiate_card(struct snd_soc_card *card)
 	}
 
 	snd_soc_dapm_link_dai_widgets(card);
+	soc_link_legacy_be_widgets(card);
 
 	if (card->controls)
 		snd_soc_add_card_controls(card, card->controls, card->num_controls);
