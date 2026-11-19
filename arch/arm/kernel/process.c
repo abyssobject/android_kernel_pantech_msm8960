@@ -358,6 +358,11 @@ static void show_data(unsigned long addr, int nbytes, const char *name)
 	}
 }
 
+/* ef52 bring-up: skip the memory dumps so the backtrace gets out first */
+#include <linux/moduleparam.h>
+static int ef52_short_oops = 1;
+module_param(ef52_short_oops, int, 0644);
+
 static void show_extra_register_data(struct pt_regs *regs, int nbytes)
 {
 	mm_segment_t fs;
@@ -531,7 +536,8 @@ void __show_regs(struct pt_regs *regs)
 	}
 #endif
 
-	show_extra_register_data(regs, 128);
+	if (!ef52_short_oops)
+		show_extra_register_data(regs, 128);
 }
 
 void show_regs(struct pt_regs * regs)
