@@ -322,6 +322,7 @@ void videobuf2_queue_pmem_contig_init(struct vb2_queue *q,
 	q->io_modes = VB2_MMAP | VB2_USERPTR;
 	q->io_flags = 0;
 	q->buf_struct_size = size;
+	q->timestamp_type = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	if (vb2_queue_init(q))
 		pr_err("oops\n");
 }

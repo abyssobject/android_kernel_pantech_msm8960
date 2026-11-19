@@ -984,6 +984,17 @@ static int msm_open(struct file *f)
 	pcam_inst->vbqueue_initialized = 0;
 	rc = 0;
 
+	/*
+	 * ef52 (3.10): once any instance called v4l2_fh_init() the video
+	 * device is flagged V4L2_FL_USES_V4L2_FH and vb2_poll() treats every
+	 * file's private_data as an initialised v4l2_fh (it waits on fh->wait).
+	 * Only instance 0 sets up its event queue, so polling a stream node
+	 * oopsed in add_wait_queue(). Give the other instances an initialised
+	 * (never added, so no events) fh too.
+	 */
+	if (pcam_inst->my_index != 0)
+		v4l2_fh_init(&pcam_inst->eventHandle, pcam->pvdev);
+
 	f->private_data = &pcam_inst->eventHandle;
 
 	D("f->private_data = 0x%x, pcam = 0x%x\n",
