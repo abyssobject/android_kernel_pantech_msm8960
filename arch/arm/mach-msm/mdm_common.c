@@ -1276,9 +1276,10 @@ errfatal_err:
 		goto status_err;
 	}
 
+	/* shared with the HSIC host's peripheral-status irq (same gpio) */
 	ret = request_threaded_irq(irq, NULL, mdm_status_change,
-		IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
-		"mdm status", mdev);
+		IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT |
+		IRQF_SHARED, "mdm status", mdev);
 
 	if (ret < 0) {
 		pr_err("%s: MDM2AP_STATUS IRQ#%d request failed, err=%d",
