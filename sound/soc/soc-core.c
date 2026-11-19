@@ -1853,6 +1853,17 @@ base_error:
 static int soc_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
+	int ret;
+
+	/*
+	 * The driver core clears drvdata when a probe fails, -EPROBE_DEFER
+	 * included, so on the deferred retry of a legacy "soc-audio" card the
+	 * card set by the machine driver is gone and the card is never
+	 * registered (APQ8064: the tabla codec registers after soc-audio).
+	 * Keep the card in platform_data while the probe is deferred.
+	 */
+	if (!card)
+		card = pdev->dev.platform_data;
 
 	/*
 	 * no card, so machine driver should be registering card
@@ -1868,7 +1879,13 @@ static int soc_probe(struct platform_device *pdev)
 	/* Bodge while we unpick instantiation */
 	card->dev = &pdev->dev;
 
-	return snd_soc_register_card(card);
+	ret = snd_soc_register_card(card);
+	if (ret == -EPROBE_DEFER && !pdev->dev.platform_data)
+		pdev->dev.platform_data = card;
+	else if (pdev->dev.platform_data == card)
+		pdev->dev.platform_data = NULL;
+
+	return ret;
 }
 
 static int soc_cleanup_card_resources(struct snd_soc_card *card)
