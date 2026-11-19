@@ -49,6 +49,14 @@
 
 #ifdef CONFIG_SKY_SND_HEADSET_BUTTON_ADC  //20121119 jhsong : #8378522# test code headset button adc level check
 #include <linux/proc_fs.h>
+
+/*
+ * The 3.10 wcd9xxx core API takes the core resource, not struct wcd9xxx;
+ * codec->control_data is a struct wcd9xxx * (void *, so passing it straight
+ * compiled silently and the core read a bogus core_res->parent).
+ */
+#define WCD9XXX_CODEC_CORE_RES(codec) \
+	(&((struct wcd9xxx *)(codec)->control_data)->core_res)
 struct proc_dir_entry *wcd9310_headset_button_dir;
 static s32 mv_s_backup = 0;
 #endif
@@ -3451,7 +3459,7 @@ static void hphocp_off_report(struct tabla_priv *tabla,
 			tabla->hphlocp_cnt = 0;
 		else
 			tabla->hphrocp_cnt = 0;
-		wcd9xxx_enable_irq(codec->control_data, irq);
+		wcd9xxx_enable_irq(WCD9XXX_CODEC_CORE_RES(codec), irq);
 	}
 }
 
@@ -4498,7 +4506,7 @@ static int tabla_write(struct snd_soc_codec *codec, unsigned int reg,
 				reg, ret);
 	}
 
-	return wcd9xxx_reg_write(codec->control_data, reg, value);
+	return wcd9xxx_reg_write(WCD9XXX_CODEC_CORE_RES(codec), reg, value);
 }
 static unsigned int tabla_read(struct snd_soc_codec *codec,
 				unsigned int reg)
@@ -4521,7 +4529,7 @@ static unsigned int tabla_read(struct snd_soc_codec *codec,
 				reg, ret);
 	}
 
-	val = wcd9xxx_reg_read(codec->control_data, reg);
+	val = wcd9xxx_reg_read(WCD9XXX_CODEC_CORE_RES(codec), reg);
 	return val;
 }
 
@@ -5889,7 +5897,7 @@ static short __tabla_codec_sta_dce(struct snd_soc_codec *codec, int dce,
 	short bias_value;
 	struct tabla_priv *tabla = snd_soc_codec_get_drvdata(codec);
 
-	wcd9xxx_disable_irq(codec->control_data, WCD9XXX_IRQ_MBHC_POTENTIAL);
+	wcd9xxx_disable_irq(WCD9XXX_CODEC_CORE_RES(codec), WCD9XXX_IRQ_MBHC_POTENTIAL);
 	if (noreldetection)
 		tabla_turn_onoff_rel_detection(codec, false);
 
@@ -5925,7 +5933,7 @@ static short __tabla_codec_sta_dce(struct snd_soc_codec *codec, int dce,
 
 	if (noreldetection)
 		tabla_turn_onoff_rel_detection(codec, true);
-	wcd9xxx_enable_irq(codec->control_data, WCD9XXX_IRQ_MBHC_POTENTIAL);
+	wcd9xxx_enable_irq(WCD9XXX_CODEC_CORE_RES(codec), WCD9XXX_IRQ_MBHC_POTENTIAL);
 
 	return bias_value;
 }
@@ -6324,7 +6332,7 @@ static int tabla_codec_enable_hs_detect(struct snd_soc_codec *codec,
 	snd_soc_update_bits(codec, tabla->reg_addr.micb_4_mbhc, 0x3,
 			    tabla->mbhc_cfg.micbias);
 
-	wcd9xxx_enable_irq(codec->control_data, WCD9XXX_IRQ_MBHC_INSERTION);
+	wcd9xxx_enable_irq(WCD9XXX_CODEC_CORE_RES(codec), WCD9XXX_IRQ_MBHC_INSERTION);
 	snd_soc_update_bits(codec, TABLA_A_CDC_MBHC_INT_CTL, 0x1, 0x1);
 	pr_debug("%s: leave\n", __func__);
 	return 0;
@@ -6456,7 +6464,7 @@ void tabla_mbhc_cal(struct snd_soc_codec *codec)
 	tabla = snd_soc_codec_get_drvdata(codec);
 	calibration = tabla->mbhc_cfg.calibration;
 
-	wcd9xxx_disable_irq(codec->control_data, WCD9XXX_IRQ_MBHC_POTENTIAL);
+	wcd9xxx_disable_irq(WCD9XXX_CODEC_CORE_RES(codec), WCD9XXX_IRQ_MBHC_POTENTIAL);
 	tabla_turn_onoff_rel_detection(codec, false);
 
 	/* First compute the DCE / STA wait times
@@ -6562,7 +6570,7 @@ void tabla_mbhc_cal(struct snd_soc_codec *codec)
 	snd_soc_write(codec, TABLA_A_MBHC_SCALING_MUX_1, 0x84);
 	usleep_range(100, 100);
 
-	wcd9xxx_enable_irq(codec->control_data, WCD9XXX_IRQ_MBHC_POTENTIAL);
+	wcd9xxx_enable_irq(WCD9XXX_CODEC_CORE_RES(codec), WCD9XXX_IRQ_MBHC_POTENTIAL);
 	tabla_turn_onoff_rel_detection(codec, true);
 }
 
@@ -7214,7 +7222,7 @@ static irqreturn_t tabla_hphl_ocp_irq(int irq, void *data)
 			snd_soc_update_bits(codec, TABLA_A_RX_HPH_OCP_CTL, 0x10,
 					    0x10);
 		} else {
-			wcd9xxx_disable_irq(codec->control_data,
+			wcd9xxx_disable_irq(WCD9XXX_CODEC_CORE_RES(codec),
 					  WCD9XXX_IRQ_HPH_PA_OCPL_FAULT);
 			tabla->hph_status |= SND_JACK_OC_HPHL;
 			if (tabla->mbhc_cfg.headset_jack)
@@ -7248,7 +7256,7 @@ static irqreturn_t tabla_hphr_ocp_irq(int irq, void *data)
 			snd_soc_update_bits(codec, TABLA_A_RX_HPH_OCP_CTL, 0x10,
 					    0x10);
 		} else {
-			wcd9xxx_disable_irq(codec->control_data,
+			wcd9xxx_disable_irq(WCD9XXX_CODEC_CORE_RES(codec),
 					  WCD9XXX_IRQ_HPH_PA_OCPR_FAULT);
 			tabla->hph_status |= SND_JACK_OC_HPHR;
 			if (tabla->mbhc_cfg.headset_jack)
@@ -7915,7 +7923,7 @@ static void tabla_hs_insert_irq_nogpio(struct tabla_priv *priv, bool is_removal,
 			tabla_codec_detect_plug_type(codec);
 			wcd9xxx_unlock_sleep(core_res);
 		} else {
-			wcd9xxx_enable_irq(codec->control_data,
+			wcd9xxx_enable_irq(WCD9XXX_CODEC_CORE_RES(codec),
 					   WCD9XXX_IRQ_MBHC_INSERTION);
 			pr_err("%s: Error detecting plug insertion\n",
 			       __func__);
@@ -7954,7 +7962,7 @@ static irqreturn_t tabla_hs_insert_irq(int irq, void *data)
 
 	pr_debug("%s: enter\n", __func__);
 	TABLA_ACQUIRE_LOCK(priv->codec_resource_lock);
-	wcd9xxx_disable_irq(codec->control_data, WCD9XXX_IRQ_MBHC_INSERTION);
+	wcd9xxx_disable_irq(WCD9XXX_CODEC_CORE_RES(codec), WCD9XXX_IRQ_MBHC_INSERTION);
 
 	is_mb_trigger = !!(snd_soc_read(codec, priv->mbhc_bias_regs.mbhc_reg) &
 					0x10);
@@ -8204,7 +8212,7 @@ void mbhc_insert_work(struct work_struct *work)
 	snd_soc_update_bits(codec, tabla->mbhc_bias_regs.mbhc_reg, 0x90, 0x00);
 	snd_soc_update_bits(codec, TABLA_A_MBHC_HPH, 0x13, 0x00);
 	snd_soc_update_bits(codec, tabla->mbhc_bias_regs.ctl_reg, 0x01, 0x00);
-	wcd9xxx_disable_irq_sync(codec->control_data,
+	wcd9xxx_disable_irq_sync(WCD9XXX_CODEC_CORE_RES(codec),
 				 WCD9XXX_IRQ_MBHC_INSERTION);
 	tabla_codec_detect_plug_type(codec);
 	wcd9xxx_unlock_sleep(core_res);
@@ -8437,9 +8445,9 @@ static int tabla_mbhc_init_and_calibrate(struct tabla_priv *tabla)
 
 	if (!IS_ERR_VALUE(ret)) {
 		snd_soc_update_bits(codec, TABLA_A_RX_HPH_OCP_CTL, 0x10, 0x10);
-		wcd9xxx_enable_irq(codec->control_data,
+		wcd9xxx_enable_irq(WCD9XXX_CODEC_CORE_RES(codec),
 				 WCD9XXX_IRQ_HPH_PA_OCPL_FAULT);
-		wcd9xxx_enable_irq(codec->control_data,
+		wcd9xxx_enable_irq(WCD9XXX_CODEC_CORE_RES(codec),
 				 WCD9XXX_IRQ_HPH_PA_OCPR_FAULT);
 
 		if (tabla->mbhc_cfg.gpio) {
@@ -9335,12 +9343,12 @@ static int tabla_codec_remove(struct snd_soc_codec *codec)
 
 	wake_lock_destroy(&tabla->irq_resend_wlock);
 
-	wcd9xxx_free_irq(codec->control_data, WCD9XXX_IRQ_SLIMBUS, tabla);
-	wcd9xxx_free_irq(codec->control_data, WCD9XXX_IRQ_MBHC_RELEASE, tabla);
-	wcd9xxx_free_irq(codec->control_data, WCD9XXX_IRQ_MBHC_POTENTIAL,
+	wcd9xxx_free_irq(WCD9XXX_CODEC_CORE_RES(codec), WCD9XXX_IRQ_SLIMBUS, tabla);
+	wcd9xxx_free_irq(WCD9XXX_CODEC_CORE_RES(codec), WCD9XXX_IRQ_MBHC_RELEASE, tabla);
+	wcd9xxx_free_irq(WCD9XXX_CODEC_CORE_RES(codec), WCD9XXX_IRQ_MBHC_POTENTIAL,
 			 tabla);
-	wcd9xxx_free_irq(codec->control_data, WCD9XXX_IRQ_MBHC_REMOVAL, tabla);
-	wcd9xxx_free_irq(codec->control_data, WCD9XXX_IRQ_MBHC_INSERTION,
+	wcd9xxx_free_irq(WCD9XXX_CODEC_CORE_RES(codec), WCD9XXX_IRQ_MBHC_REMOVAL, tabla);
+	wcd9xxx_free_irq(WCD9XXX_CODEC_CORE_RES(codec), WCD9XXX_IRQ_MBHC_INSERTION,
 			 tabla);
 	TABLA_ACQUIRE_LOCK(tabla->codec_resource_lock);
 	tabla_codec_disable_clock_block(codec);

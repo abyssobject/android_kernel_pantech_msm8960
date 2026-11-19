@@ -36,6 +36,14 @@
 #include <linux/wait.h>
 #include "wcd9304.h"
 
+/*
+ * The 3.10 wcd9xxx core API takes the core resource, not struct wcd9xxx;
+ * codec->control_data is a struct wcd9xxx * (void *, so passing it straight
+ * compiled silently and the core read a bogus core_res->parent).
+ */
+#define WCD9XXX_CODEC_CORE_RES(codec) \
+	(&((struct wcd9xxx *)(codec)->control_data)->core_res)
+
 #define WCD9304_RATES (SNDRV_PCM_RATE_8000|SNDRV_PCM_RATE_16000|\
 			SNDRV_PCM_RATE_32000|SNDRV_PCM_RATE_48000)
 #define ADC_DMIC_SEL_ADC	0
@@ -2452,7 +2460,7 @@ static void hphocp_off_report(struct sitar_priv *sitar,
 			sitar->hphlocp_cnt = 0;
 		else
 			sitar->hphrocp_cnt = 0;
-		wcd9xxx_enable_irq(codec->control_data, irq);
+		wcd9xxx_enable_irq(WCD9XXX_CODEC_CORE_RES(codec), irq);
 	}
 }
 
@@ -3155,7 +3163,7 @@ static int sitar_write(struct snd_soc_codec *codec, unsigned int reg,
 				reg, ret);
 	}
 
-	return wcd9xxx_reg_write(codec->control_data, reg, value);
+	return wcd9xxx_reg_write(WCD9XXX_CODEC_CORE_RES(codec), reg, value);
 }
 static unsigned int sitar_read(struct snd_soc_codec *codec,
 				unsigned int reg)
@@ -3178,7 +3186,7 @@ static unsigned int sitar_read(struct snd_soc_codec *codec,
 				reg, ret);
 	}
 
-	val = wcd9xxx_reg_read(codec->control_data, reg);
+	val = wcd9xxx_reg_read(WCD9XXX_CODEC_CORE_RES(codec), reg);
 	return val;
 }
 
@@ -4007,7 +4015,7 @@ static short __sitar_codec_sta_dce(struct snd_soc_codec *codec, int dce,
 
 	if (noreldetection)
 		sitar_turn_onoff_rel_detection(codec, true);
-	wcd9xxx_enable_irq(codec->control_data, WCD9XXX_IRQ_MBHC_POTENTIAL);
+	wcd9xxx_enable_irq(WCD9XXX_CODEC_CORE_RES(codec), WCD9XXX_IRQ_MBHC_POTENTIAL);
 
 	return bias_value;
 }
@@ -4313,7 +4321,7 @@ void sitar_mbhc_cal(struct snd_soc_codec *codec)
 	snd_soc_write(codec, SITAR_A_MBHC_SCALING_MUX_1, 0x84);
 	usleep_range(100, 100);
 
-	wcd9xxx_enable_irq(codec->control_data, WCD9XXX_IRQ_MBHC_POTENTIAL);
+	wcd9xxx_enable_irq(WCD9XXX_CODEC_CORE_RES(codec), WCD9XXX_IRQ_MBHC_POTENTIAL);
 	sitar_turn_onoff_rel_detection(codec, true);
 }
 
@@ -4998,7 +5006,7 @@ static irqreturn_t sitar_mechanical_plug_detect_irq(int irq, void *data)
 		r = IRQ_NONE;
 	} else {
 		sitar_hs_gpio_handler(codec);
-		wcd9xxx_unlock_sleep(codec->control_data);
+		wcd9xxx_unlock_sleep(WCD9XXX_CODEC_CORE_RES(codec));
 	}
 	return r;
 }
@@ -5032,9 +5040,9 @@ static int sitar_mbhc_init_and_calibrate(struct snd_soc_codec *codec)
 		rc = enable_irq_wake(sitar->mbhc_cfg.gpio_irq);
 		snd_soc_update_bits(codec, SITAR_A_RX_HPH_OCP_CTL,
 							0x10, 0x10);
-		wcd9xxx_enable_irq(codec->control_data,
+		wcd9xxx_enable_irq(WCD9XXX_CODEC_CORE_RES(codec),
 				   WCD9XXX_IRQ_HPH_PA_OCPL_FAULT);
-		wcd9xxx_enable_irq(codec->control_data,
+		wcd9xxx_enable_irq(WCD9XXX_CODEC_CORE_RES(codec),
 				   WCD9XXX_IRQ_HPH_PA_OCPR_FAULT);
 		/* Bootup time detection */
 		sitar_hs_gpio_handler(codec);
