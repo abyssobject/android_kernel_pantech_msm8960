@@ -24,7 +24,6 @@
 #include <media/v4l2-device.h>
 
 
-
 #include "msm.h"
 #include "msm_cam_server.h"
 #include "msm_ispif.h"
@@ -264,7 +263,7 @@ static void msm_vb2_ops_buf_cleanup(struct vb2_buffer *vb)
 		spin_unlock_irqrestore(&pcam_inst->vq_irqlock, flags);
 	}
 	pmctl = msm_cam_server_get_mctl(pcam->mctl_handle);
-	if (pmctl == NULL) {
+	if (pmctl == NULL || pmctl->client == NULL) {
 		pr_err("%s No mctl found\n", __func__);
 		buf->state = MSM_BUFFER_STATE_UNUSED;
 		return;
@@ -379,6 +378,35 @@ void msm_mctl_gettimeofday(struct timeval *tv)
 	tv->tv_usec = ts.tv_nsec/1000;
 }
 
+void msm_mctl_getAVTimer(struct msm_cam_v4l2_dev_inst *pcam_inst, struct timeval *tv)
+{
+   uint32_t avtimer_msw_1st = 0, avtimer_lsw = 0;
+   uint32_t avtimer_msw_2nd = 0;
+   uint8_t iter = 0;
+   tv->tv_sec = 0; tv->tv_usec = 0;
+
+   if (!(pcam_inst->p_avtimer_lsw) || !(pcam_inst->p_avtimer_msw)) {
+       pr_err("%s: ioremap failed\n", __func__);
+       return;
+   }
+
+   do {
+       avtimer_msw_1st = msm_camera_io_r(pcam_inst->p_avtimer_msw);
+       avtimer_lsw = msm_camera_io_r(pcam_inst->p_avtimer_lsw);
+       avtimer_msw_2nd = msm_camera_io_r(pcam_inst->p_avtimer_msw);
+   } while ((avtimer_msw_1st != avtimer_msw_2nd) && (iter++ < AVTIMER_ITERATION_CTR));
+
+   /*Just return if the MSW TimeStamps don't converge after a few iterations
+      Application needs to handle the zero TS values*/
+   if(iter >= AVTIMER_ITERATION_CTR){
+       pr_err("%s: AVTimer MSW TS did not converge !!!\n", __func__);
+       return;
+   }
+
+   tv->tv_sec = avtimer_msw_1st;
+   tv->tv_usec = avtimer_lsw;
+}
+
 struct msm_frame_buffer *msm_mctl_buf_find(
 	struct msm_cam_media_controller *pmctl,
 	struct msm_cam_v4l2_dev_inst *pcam_inst, int del_buf,
@@ -453,6 +481,7 @@ int msm_mctl_buf_done_proc(
 		buf->vidbuf.v4l2_buf.timestamp = cam_ts->timestamp;
 		buf->vidbuf.v4l2_buf.sequence  = cam_ts->frame_id;
 	}
+	pcam_inst->sequence = buf->vidbuf.v4l2_buf.sequence;
 	D("%s Notify user about buffer %d image_mode %d frame_id %d", __func__,
 		buf->vidbuf.v4l2_buf.index, pcam_inst->image_mode,
 		buf->vidbuf.v4l2_buf.sequence);
@@ -578,53 +607,37 @@ struct msm_cam_v4l2_dev_inst *msm_mctl_get_inst_by_img_mode(
 	struct msm_cam_v4l2_device *pcam = pmctl->pcam_ptr;
 	int idx;
 
-		/* Valid image mode. Search the mctl node first.
-		 * If mctl node doesnt have the instance, then
-		 * search in the user's video node */
-		if (pmctl->vfe_output_mode == VFE_OUTPUTS_MAIN_AND_THUMB
-		|| pmctl->vfe_output_mode == VFE_OUTPUTS_THUMB_AND_MAIN) {
-			if (pcam->mctl_node.dev_inst_map[img_mode]
-			&& is_buffer_queued(pcam, img_mode)) {
-				idx = pcam->mctl_node.dev_inst_map[img_mode]
-							->my_index;
-				pcam_inst = pcam->mctl_node.dev_inst[idx];
-				D("%s Found instance %p in mctl node device\n",
-				  __func__, pcam_inst);
-			} else if (pcam->dev_inst_map[img_mode]) {
-				idx = pcam->dev_inst_map[img_mode]->my_index;
-				pcam_inst = pcam->dev_inst[idx];
-				D("%s Found instance %p in video device\n",
+	/* Valid image mode. Search the mctl node first.
+	 * If mctl node doesnt have the instance, then
+	 * search in the user's video node */
+	if (pmctl->vfe_output_mode == VFE_OUTPUTS_MAIN_AND_THUMB
+		|| pmctl->vfe_output_mode == VFE_OUTPUTS_THUMB_AND_MAIN
+		|| pmctl->vfe_output_mode == VFE_OUTPUTS_MAIN_AND_PREVIEW) {
+		if (pcam->mctl_node.dev_inst_map[img_mode]
+		&& is_buffer_queued(pcam, img_mode)) {
+			idx = pcam->mctl_node.dev_inst_map[img_mode]->my_index;
+			pcam_inst = pcam->mctl_node.dev_inst[idx];
+			D("%s Found instance %p in mctl node device\n",
 				__func__, pcam_inst);
-			}
-		} else if (img_mode == MSM_V4L2_EXT_CAPTURE_MODE_V2X_LIVESHOT) {
-				img_mode = MSM_V4L2_EXT_CAPTURE_MODE_MAIN;
-			if (pcam->mctl_node.dev_inst_map[img_mode] &&
-					is_buffer_queued(pcam, img_mode)) {
-				idx = pcam->mctl_node.dev_inst_map[img_mode]
-							->my_index;
-				pcam_inst = pcam->mctl_node.dev_inst[idx];
-				D("%s Found instance %p in mctl node device\n",
-				  __func__, pcam_inst);
-			} else if (pcam->dev_inst_map[img_mode]) {
-				idx = pcam->dev_inst_map[img_mode]->my_index;
-				pcam_inst = pcam->dev_inst[idx];
-				D("%s Found instance %p in video device\n",
+		} else if (pcam->dev_inst_map[img_mode]) {
+			idx = pcam->dev_inst_map[img_mode]->my_index;
+			pcam_inst = pcam->dev_inst[idx];
+			D("%s Found instance %p in video device\n",
 				__func__, pcam_inst);
-			}
-		} else {
-			if (pcam->mctl_node.dev_inst_map[img_mode]) {
-				idx = pcam->mctl_node.dev_inst_map[img_mode]
-				->my_index;
-				pcam_inst = pcam->mctl_node.dev_inst[idx];
-				D("%s Found instance %p in mctl node device\n",
-				__func__, pcam_inst);
-			} else if (pcam->dev_inst_map[img_mode]) {
-				idx = pcam->dev_inst_map[img_mode]->my_index;
-				pcam_inst = pcam->dev_inst[idx];
-				D("%s Found instance %p in video device\n",
-					__func__, pcam_inst);
-			}
 		}
+	} else {
+		if (pcam->mctl_node.dev_inst_map[img_mode]) {
+			idx = pcam->mctl_node.dev_inst_map[img_mode]->my_index;
+			pcam_inst = pcam->mctl_node.dev_inst[idx];
+			D("%s Found instance %p in mctl node device\n",
+				__func__, pcam_inst);
+		} else if (pcam->dev_inst_map[img_mode]) {
+			idx = pcam->dev_inst_map[img_mode]->my_index;
+			pcam_inst = pcam->dev_inst[idx];
+			D("%s Found instance %p in video device\n",
+				__func__, pcam_inst);
+		}
+	}
 	return pcam_inst;
 }
 
@@ -656,13 +669,25 @@ struct msm_cam_v4l2_dev_inst *msm_mctl_get_pcam_inst(
 	 *    video instance.
 	 */
 	if (buf_handle->buf_lookup_type == BUF_LOOKUP_BY_INST_HANDLE) {
-		idx = GET_MCTLPP_INST_IDX(buf_handle->inst_handle);
-		if (idx > MSM_DEV_INST_MAX) {
-			idx = GET_VIDEO_INST_IDX(buf_handle->inst_handle);
-			BUG_ON(idx > MSM_DEV_INST_MAX);
-			pcam_inst = pcam->dev_inst[idx];
+		if (buf_handle->inst_handle == 0) {
+			pr_err("%sBuffer instance handle not initialised",
+				 __func__);
+			return pcam_inst;
 		} else {
-			pcam_inst = pcam->mctl_node.dev_inst[idx];
+			idx = GET_MCTLPP_INST_IDX(buf_handle->inst_handle);
+			if (idx > MSM_DEV_INST_MAX) {
+				idx = GET_VIDEO_INST_IDX(
+					buf_handle->inst_handle);
+				if (idx > MSM_DEV_INST_MAX) {
+					pr_err("%s Invalid video inst idx %d",
+						__func__, idx);
+					return pcam_inst;
+				} else {
+					pcam_inst = pcam->dev_inst[idx];
+				}
+			} else {
+				pcam_inst = pcam->mctl_node.dev_inst[idx];
+			}
 		}
 	} else if ((buf_handle->buf_lookup_type == BUF_LOOKUP_BY_IMG_MODE)
 		&& (buf_handle->image_mode >= 0 &&
@@ -699,9 +724,13 @@ int msm_mctl_reserve_free_buf(
 	 * camera instance, he would send the preferred camera instance.
 	 * If the preferred camera instance is NULL, get the
 	 * camera instance using the image mode passed */
-	if (!pcam_inst)
+	if (!pcam_inst) {
 		pcam_inst = msm_mctl_get_pcam_inst(pmctl, buf_handle);
-
+		if(!pcam_inst) {
+			pr_err("%s: pcam_inst is NULL\n", __func__);
+			return rc;
+		}
+	}
 	if (!pcam_inst || !pcam_inst->streamon) {
 		pr_err("%s: stream is turned off\n", __func__);
 		return rc;
@@ -869,7 +898,7 @@ int msm_mctl_buf_done_pp(struct msm_cam_media_controller *pmctl,
 	cam_ts.present = 1;
 	cam_ts.timestamp = ret_frame->timestamp;
 	cam_ts.frame_id   = ret_frame->frame_id;
-	if (ret_frame->dirty)
+	if (ret_frame->dirty || (ret_frame->frame_id < pcam_inst->sequence))
 		/* the frame is dirty, not going to disptach to app */
 		rc = msm_mctl_release_free_buf(pmctl, pcam_inst, frame);
 	else
@@ -996,6 +1025,78 @@ static int __msm_mctl_map_user_frame(struct msm_cam_meta_frame *meta_frame,
 						meta_frame->map[j].handle);
 				}
 			}
+			return -EINVAL;
+		}
+		meta_frame->map[i].data_offset =
+			meta_frame->frame.mp[i].data_offset;
+		/* Add the addr_offset to the paddr here itself. The addr_offset
+		 * will be non-zero only if the user has allocated a buffer with
+		 * a single fd, but logically partitioned it into
+		 * multiple planes or buffers.*/
+		paddr += meta_frame->frame.mp[i].addr_offset;
+		meta_frame->map[i].paddr = paddr;
+		meta_frame->map[i].len = len;
+		D("%s Plane %d fd %d handle %p paddr %x", __func__,
+			i, meta_frame->frame.mp[i].fd,
+			meta_frame->map[i].handle,
+			(uint32_t)meta_frame->map[i].paddr);
+	}
+	D("%s Frame mapped successfully ", __func__);
+	return 0;
+}
+#else
+/* Unmap using PMEM APIs */
+static int __msm_mctl_unmap_user_frame(struct msm_cam_meta_frame *meta_frame,
+	struct ion_client *client, int domain_num)
+{
+	int i = 0, rc = 0;
+
+	for (i = 0; i < meta_frame->frame.num_planes; i++) {
+		D("%s Plane %d handle %p", __func__, i,
+			meta_frame->map[i].handle);
+		put_pmem_file(meta_frame->map[i].file);
+	}
+}
+
+/* Map using PMEM APIs */
+static int __msm_mctl_map_user_frame(struct msm_cam_meta_frame *meta_frame,
+	struct ion_client *client, int domain_num)
+{
+	unsigned long kvstart = 0;
+	unsigned long paddr = 0;
+	struct file *file = NULL;
+	unsigned long len;
+	int i = 0, j = 0;
+
+	for (i = 0; i < meta_frame->frame.num_planes; i++) {
+		rc = get_pmem_file(meta_frame->frame.mp[i].fd,
+			&paddr, &kvstart, &len, &file);
+		if (rc < 0) {
+			pr_err("%s: get_pmem_file fd %d error %d\n",
+				__func__, meta_frame->frame.mp[i].fd, rc);
+			/* Roll back previous plane mappings, if any */
+			for (j = i-1; j >= 0; j--)
+				if (meta_frame->map[j].file)
+					put_pmem_file(meta_frame->map[j].file);
+
+			return -EACCES;
+		}
+		D("%s Got pmem file for fd %d plane %d as %p", __func__,
+			meta_frame->frame.mp[i].fd, i, file);
+		meta_frame->map[i].file = file;
+		/* Validate the offsets with the mapped length. */
+		if ((meta_frame->frame.mp[i].addr_offset > len) ||
+			(meta_frame->frame.mp[i].data_offset +
+			meta_frame->frame.mp[i].length > len)) {
+			pr_err("%s: Invalid offsets A %d D %d L %d len %ld",
+				__func__, meta_frame->frame.mp[i].addr_offset,
+				meta_frame->frame.mp[i].data_offset,
+				meta_frame->frame.mp[i].length, len);
+			/* Roll back previous plane mappings, if any */
+			for (j = i; j >= 0; j--)
+				if (meta_frame->map[j].file)
+					put_pmem_file(meta_frame->map[j].file);
+
 			return -EINVAL;
 		}
 		meta_frame->map[i].data_offset =

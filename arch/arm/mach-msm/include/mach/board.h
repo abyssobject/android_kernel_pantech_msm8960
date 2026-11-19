@@ -63,7 +63,8 @@ struct msm_camera_device_platform_data {
 	uint8_t csid_core;
 	uint8_t is_vpe;
 	struct msm_bus_scale_pdata *cam_bus_scale_table;
-	uint8_t csiphy_core;
+	uint8_t csiphy_core;	/* CAF 3.10 only; the Pantech camera_v1
+				 * selects CSIPHY and CSID by csid_core */
 };
 
 #ifdef CONFIG_SENSORS_MT9T013
@@ -182,6 +183,17 @@ struct msm_gpio_set_tbl {
 	uint32_t delay;
 };
 
+/*
+ * ef52: kernel-only, as in the Pantech 3.4 tree (CAF 3.10 moved it into the
+ * uapi msm_camera.h and dropped csi_phy_sel). csi_phy_sel is what the camera
+ * daemon gets back in sensor_output_info_t.csi_phy_sel.
+ */
+struct msm_camera_csi_lane_params {
+	uint16_t csi_lane_assign;
+	uint16_t csi_lane_mask;
+	uint8_t csi_phy_sel;
+};
+
 struct msm_camera_gpio_num_info {
 	uint16_t gpio_num[7];
 };
@@ -213,6 +225,13 @@ struct msm_camera_i2c_conf {
 	uint8_t use_i2c_mux;
 	struct platform_device *mux_dev;
 	enum msm_camera_i2c_mux_mode i2c_mux_mode;
+};
+
+enum msm_camera_vreg_name_t {
+	CAM_VDIG,
+	CAM_VIO,
+	CAM_VANA,
+	CAM_VAF,
 };
 
 struct msm_camera_sensor_platform_info {

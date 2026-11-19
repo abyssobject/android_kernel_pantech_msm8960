@@ -75,7 +75,11 @@
 #define MAX_NUM_JPEG_DEV 3
 #define MAX_NUM_CPP_DEV 1
 #define MAX_NUM_CCI_DEV 1
-#define MAX_NUM_FLASH_DEV 4
+
+/*AVTimer*/
+#define AVTIMER_MSW_PHY_ADDR  0x2800900C
+#define AVTIMER_LSW_PHY_ADDR  0x28009008
+#define AVTIMER_ITERATION_CTR 16
 
 /* msm queue management APIs*/
 
@@ -298,7 +302,6 @@ struct msm_cam_media_controller {
 	struct v4l2_subdev *vfe_sdev; /* vfe sub device */
 	struct v4l2_subdev *eeprom_sdev; /* eeprom sub device */
 	struct v4l2_subdev *cpp_sdev;/*cpp sub device*/
-	struct v4l2_subdev *flash_sdev;/*flash sub device*/
 
 	struct msm_cam_config_dev *config_device;
 
@@ -365,6 +368,10 @@ struct msm_cam_v4l2_dev_inst {
 	int vbqueue_initialized;
 	struct mutex inst_lock;
 	uint32_t inst_handle;
+	uint32_t sequence;
+	uint8_t avtimerOn;
+	void __iomem *p_avtimer_msw;
+	void __iomem *p_avtimer_lsw;
 };
 
 struct msm_cam_mctl_node {
@@ -404,7 +411,6 @@ struct msm_cam_v4l2_device {
 	struct v4l2_subdev *sensor_sdev; /* sensor sub device */
 	struct v4l2_subdev *act_sdev; /* actuator sub device */
 	struct v4l2_subdev *eeprom_sdev; /* actuator sub device */
-	struct v4l2_subdev *flash_sdev; /* flash sub device */
 	struct msm_camera_sensor_info *sdata;
 
 	struct msm_device_queue eventData_q; /*payload for events sent to app*/
@@ -587,7 +593,6 @@ struct msm_cam_server_dev {
 	struct v4l2_subdev *cpp_device[MAX_NUM_CPP_DEV];
 	struct v4l2_subdev *irqr_device;
 	struct v4l2_subdev *cci_device;
-	struct v4l2_subdev *flash_device[MAX_NUM_FLASH_DEV];
 
 	spinlock_t  intr_table_lock;
 	struct irqmgr_intr_lkup_table irq_lkup_table;
@@ -690,6 +695,8 @@ struct msm_frame_buffer *msm_mctl_buf_find(
 	struct msm_cam_v4l2_dev_inst *pcam_inst, int del_buf,
 	struct msm_free_buf *fbuf);
 void msm_mctl_gettimeofday(struct timeval *tv);
+void msm_mctl_getAVTimer(struct msm_cam_v4l2_dev_inst *pcam_inst,
+        struct timeval *tv);
 int msm_mctl_check_pp(struct msm_cam_media_controller *p_mctl,
 	int msg_type, int *pp_divert_type, int *pp_type);
 int msm_mctl_do_pp_divert(
@@ -730,9 +737,7 @@ void msm_release_ion_client(struct kref *ref);
 int msm_cam_register_subdev_node(struct v4l2_subdev *sd,
 	struct msm_cam_subdev_info *sd_info);
 int msm_mctl_find_sensor_subdevs(struct msm_cam_media_controller *p_mctl,
-	uint8_t csiphy_core_index, uint8_t csid_core_index);
-int msm_mctl_find_flash_subdev(struct msm_cam_media_controller *p_mctl,
-	uint8_t index);
+	int core_index);
 int msm_server_open_client(int *p_qidx);
 int msm_server_send_ctrl(struct msm_ctrl_cmd *out, int ctrl_id);
 int msm_server_close_client(int idx);

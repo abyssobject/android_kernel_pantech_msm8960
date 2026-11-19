@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,6 +17,32 @@
 #define imx135_obj imx135_##obj
 
 DEFINE_MUTEX(imx135_mut);
+
+/* Register addresses for HDR control */
+#define SHORT_SHUTTER_WORD_ADDR		0x0230
+#define SHORT_GAIN_BYTE_ADDR		0x0233
+#define ABS_GAIN_R_WORD_ADDR		0x0714
+#define ABS_GAIN_B_WORD_ADDR		0x0716
+#define LSC_ENABLE_BYTE_ADDR		0x0700
+#define EN_LSC_BYTE_ADDR			0x4500
+#define RAM_SEL_TOGGLE_BYTE_ADDR	0x3A63
+#define LSC_TABLE_START_ADDR		0x4800
+#define TC_OUT_NOISE_WORD_ADDR		0x4452
+#define TC_OUT_MID_WORD_ADDR		0x4454
+#define TC_NOISE_BRATE_REGADDR		0x4458
+#define TC_MID_BRATE_REGADDR		0x4459
+#define TC_SWITCH_BYTE_ADDR			0x446C
+
+#define LSC_TABLE_LEN_BYTES			504
+
+/* Adaptive tone reduction parameters */
+#define INIT_ATR_OUT_NOISE	0xA0
+#define INIT_ATR_OUT_MID	0x800
+#define ATR_OFFSET			0x00
+#define THRESHOLD_DEAD_ZONE	10
+#define THRESHOLD_0			20
+#define THRESHOLD_1			50
+
 static struct msm_sensor_ctrl_t imx135_s_ctrl;
 
 static struct msm_camera_i2c_reg_conf imx135_start_settings[] = {
@@ -36,7 +62,7 @@ static struct msm_camera_i2c_reg_conf imx135_groupoff_settings[] = {
 };
 
 static struct msm_camera_i2c_reg_conf imx135_recommend_settings[] = {
-/* Global Settings */
+	/*Global Settings*/
 	{0x0101, 0x00},
 	{0x0105, 0x01},
 	{0x0110, 0x00},
@@ -273,8 +299,8 @@ static struct msm_camera_i2c_reg_conf imx135_prev_settings[] = {
 	{0x4344, 0x00},
 	{0x441C, 0x01},
 	/* Size setting	*/
-	{0x0340, 0x06},
-	{0x0341, 0x2E},
+	{0x0340, 0x0A},
+	{0x0341, 0x40},
 	{0x0342, 0x11},
 	{0x0343, 0xDC},
 	{0x0344, 0x00},
@@ -1123,7 +1149,7 @@ static struct msm_sensor_output_info_t imx135_dimensions[] = {
 		.x_output = 4208,
 		.y_output = 3120,
 		.line_length_pclk = 4572,
-		.frame_length_lines = 3290,
+		.frame_length_lines = 3142,
 		.vt_pixel_clk = 360000000,
 		.op_pixel_clk = 319680000,
 		.binning_factor = 1,
@@ -1133,7 +1159,7 @@ static struct msm_sensor_output_info_t imx135_dimensions[] = {
 		.x_output = 2104,
 		.y_output = 1560,
 		.line_length_pclk = 4572,
-		.frame_length_lines = 1582,
+		.frame_length_lines = 2624,
 		.vt_pixel_clk = 360000000,
 		.op_pixel_clk = 180000000,
 		.binning_factor = 1,
@@ -1205,16 +1231,23 @@ static struct v4l2_subdev_ops imx135_subdev_ops = {
 };
 
 int32_t imx135_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
-		uint16_t gain, uint32_t line)
+	uint16_t gain, uint32_t line, int32_t luma_avg, uint16_t fgain)
 {
 	uint32_t fl_lines;
 	uint8_t offset;
+	uint16_t shortshutter_gain = 0;
+	uint32_t shortshutter = 0;
+	uint16_t shortshutter_expratio = 8;
+
+	uint16_t atr_out_noise = 0;
+	uint16_t atr_out_mid = 0;
+
 	fl_lines = s_ctrl->curr_frame_length_lines;
 	fl_lines = (fl_lines * s_ctrl->fps_divider) / Q10;
 	offset = s_ctrl->sensor_exp_gain_info->vert_offset;
 	if (line > (fl_lines - offset))
 		fl_lines = line + offset;
-
+	CDBG("%s luma_avg=%d\n", __func__, luma_avg);
 	s_ctrl->func_tbl->sensor_group_hold_on(s_ctrl);
 	msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
 		s_ctrl->sensor_output_reg_addr->frame_length_lines, fl_lines,
@@ -1225,7 +1258,104 @@ int32_t imx135_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 	msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
 		s_ctrl->sensor_exp_gain_info->global_gain_addr, gain,
 		MSM_CAMERA_I2C_BYTE_DATA);
+
+	/* For video HDR mode */
+	if (s_ctrl->curr_res == MSM_SENSOR_RES_2) {
+		/* Short shutter update */
+		msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			SHORT_GAIN_BYTE_ADDR, shortshutter_gain,
+			MSM_CAMERA_I2C_BYTE_DATA);
+
+		shortshutter = (line * fgain) / (Q8 * shortshutter_expratio);
+		CDBG("longtshutter =%d, shortshutter=%d, longgain =%d\n",
+			line, shortshutter, gain);
+		msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			SHORT_SHUTTER_WORD_ADDR, shortshutter,
+			MSM_CAMERA_I2C_WORD_DATA);
+
+		/* Adaptive tone curve parameters update */
+		if (luma_avg < THRESHOLD_DEAD_ZONE) {
+			/* change to fixed tone curve */
+			msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+				TC_SWITCH_BYTE_ADDR, 0x01,
+				MSM_CAMERA_I2C_BYTE_DATA);
+		} else {
+			/* change to adaptive tone curve */
+			msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+					TC_SWITCH_BYTE_ADDR, 0x00,
+					MSM_CAMERA_I2C_BYTE_DATA);
+			if (luma_avg < THRESHOLD_0) {
+				atr_out_noise = 0;
+				atr_out_mid = 0;
+			} else if (luma_avg < THRESHOLD_1) {
+				atr_out_noise =
+					INIT_ATR_OUT_NOISE *
+					(luma_avg - THRESHOLD_0)/
+					(THRESHOLD_1 - THRESHOLD_0);
+				atr_out_mid = INIT_ATR_OUT_MID *
+					(luma_avg - THRESHOLD_0)/
+					(THRESHOLD_1 - THRESHOLD_0);
+			} else {
+				atr_out_noise = INIT_ATR_OUT_NOISE;
+				atr_out_mid = INIT_ATR_OUT_MID;
+			}
+			atr_out_noise += ATR_OFFSET;
+			atr_out_mid += ATR_OFFSET;
+			msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+				TC_OUT_NOISE_WORD_ADDR, atr_out_noise,
+				MSM_CAMERA_I2C_WORD_DATA);
+			msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+				TC_OUT_MID_WORD_ADDR, atr_out_mid,
+				MSM_CAMERA_I2C_WORD_DATA);
+		}
+	}
+
 	s_ctrl->func_tbl->sensor_group_hold_off(s_ctrl);
+	return 0;
+}
+
+int32_t imx135_hdr_update(struct msm_sensor_ctrl_t *s_ctrl,
+	struct sensor_hdr_update_parm_t *update_parm)
+{
+	int i;
+	switch (update_parm->type) {
+	case SENSOR_HDR_UPDATE_AWB:
+		CDBG("%s: SENSOR_HDR_UPDATE_AWB\n", __func__);
+		msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			ABS_GAIN_R_WORD_ADDR, update_parm->awb_gain_r,
+			MSM_CAMERA_I2C_WORD_DATA);
+		msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			ABS_GAIN_B_WORD_ADDR, update_parm->awb_gain_b,
+			MSM_CAMERA_I2C_WORD_DATA);
+		CDBG("%s: awb gains updated r=0x%x, b=0x%x\n", __func__,
+			 update_parm->awb_gain_r, update_parm->awb_gain_b);
+		break;
+	case SENSOR_HDR_UPDATE_LSC:
+		/* step1: write knot points to LSC table */
+		for (i = 0; i < LSC_TABLE_LEN_BYTES; i++) {
+			CDBG("lsc[%d] = %x\n", i, update_parm->lsc_table[i]);
+			msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+				LSC_TABLE_START_ADDR + i,
+				update_parm->lsc_table[i],
+				MSM_CAMERA_I2C_BYTE_DATA);
+		}
+		/* step2: LSC enable */
+		msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			EN_LSC_BYTE_ADDR, 0x1F, MSM_CAMERA_I2C_BYTE_DATA);
+		msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			LSC_ENABLE_BYTE_ADDR, 0x01, MSM_CAMERA_I2C_BYTE_DATA);
+		/* step3: RAM_SEL_TOGGLE */
+		msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			RAM_SEL_TOGGLE_BYTE_ADDR, 0x01,
+			MSM_CAMERA_I2C_BYTE_DATA);
+
+		CDBG("%s: lsc table updated\n", __func__);
+		break;
+	default:
+		pr_err("%s: invalid HDR update type %d\n",
+			   __func__, update_parm->type);
+		return -EINVAL;
+	}
 	return 0;
 }
 
@@ -1247,6 +1377,7 @@ static struct msm_sensor_fn_t imx135_func_tbl = {
 	.sensor_power_down = msm_sensor_power_down,
 	.sensor_adjust_frame_lines = msm_sensor_adjust_frame_lines1,
 	.sensor_get_csi_params = msm_sensor_get_csi_params,
+	.sensor_hdr_update = imx135_hdr_update,
 };
 
 static struct msm_sensor_reg_t imx135_regs = {

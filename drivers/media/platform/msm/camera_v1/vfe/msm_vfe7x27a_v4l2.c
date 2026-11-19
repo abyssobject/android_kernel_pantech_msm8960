@@ -13,7 +13,6 @@
 #include <linux/msm_adsp.h>
 #include <linux/uaccess.h>
 #include <linux/fs.h>
-
 #include <linux/slab.h>
 #include <linux/pm_qos.h>
 #include <linux/delay.h>
@@ -836,12 +835,7 @@ static void vfe_7x_ops(void *driver_data, unsigned id, size_t len,
 				kfree(data);
 				return;
 			}
-			if (vfe2x_ctrl->liveshot_enabled)
-				free_buf = vfe2x_check_free_buffer(
-					VFE_MSG_OUTPUT_IRQ,
-					VFE_MSG_V2X_LIVESHOT_PRIMARY);
-			else
-				free_buf = vfe2x_check_free_buffer(
+			free_buf = vfe2x_check_free_buffer(
 					VFE_MSG_OUTPUT_IRQ,
 					VFE_MSG_OUTPUT_PRIMARY);
 			CDBG("free_buf = %x\n",
@@ -1358,14 +1352,12 @@ static struct msm_free_buf *vfe2x_check_free_buffer(int id, int path)
 
 	vfe2x_subdev_notify(id, path);
 	if (op_mode & SNAPSHOT_MASK_MODE) {
-		if (path == VFE_MSG_OUTPUT_PRIMARY ||
-				path == VFE_MSG_V2X_LIVESHOT_PRIMARY)
+		if (path == VFE_MSG_OUTPUT_PRIMARY)
 			outch = &vfe2x_ctrl->snap;
 		else if (path == VFE_MSG_OUTPUT_SECONDARY)
 			outch = &vfe2x_ctrl->thumb;
 	} else {
-		if (path == VFE_MSG_OUTPUT_PRIMARY ||
-				path == VFE_MSG_V2X_LIVESHOT_PRIMARY) {
+		if (path == VFE_MSG_OUTPUT_PRIMARY) {
 			if (vfe2x_ctrl->zsl_mode)
 				outch = &vfe2x_ctrl->zsl_prim;
 			else
@@ -1387,14 +1379,12 @@ static int vfe2x_configure_pingpong_buffers(int id, int path)
 	vfe2x_subdev_notify(id, path);
 	CDBG("Opmode = %d\n", op_mode);
 	if (op_mode & SNAPSHOT_MASK_MODE) {
-		if (path == VFE_MSG_OUTPUT_PRIMARY ||
-				path == VFE_MSG_V2X_LIVESHOT_PRIMARY)
+		if (path == VFE_MSG_OUTPUT_PRIMARY)
 			outch = &vfe2x_ctrl->snap;
 		else if (path == VFE_MSG_OUTPUT_SECONDARY)
 			outch = &vfe2x_ctrl->thumb;
 	} else {
-		if (path == VFE_MSG_OUTPUT_PRIMARY ||
-				path == VFE_MSG_V2X_LIVESHOT_PRIMARY) {
+		if (path == VFE_MSG_OUTPUT_PRIMARY) {
 			if (vfe2x_ctrl->zsl_mode)
 				outch = &vfe2x_ctrl->zsl_prim;
 			else
@@ -1422,12 +1412,10 @@ static struct buf_info *vfe2x_get_ch(int path)
 	if (op_mode & SNAPSHOT_MASK_MODE) {
 		if (path == VFE_MSG_OUTPUT_SECONDARY)
 			ch = &vfe2x_ctrl->thumb;
-		else if (path == VFE_MSG_OUTPUT_PRIMARY ||
-					path == VFE_MSG_V2X_LIVESHOT_PRIMARY)
+		else if (path == VFE_MSG_OUTPUT_PRIMARY)
 			ch = &vfe2x_ctrl->snap;
 	} else {
-		if (path == VFE_MSG_OUTPUT_PRIMARY ||
-					path == VFE_MSG_V2X_LIVESHOT_PRIMARY) {
+		if (path == VFE_MSG_OUTPUT_PRIMARY) {
 			if (vfe2x_ctrl->zsl_mode)
 				ch = &vfe2x_ctrl->zsl_prim;
 			else
@@ -1570,11 +1558,6 @@ static long msm_vfe_subdev_ioctl(struct v4l2_subdev *sd,
 		struct buf_info *outch = vfe2x_get_ch(path);
 		outch->pong = *((struct msm_free_buf *)data);
 	}
-		return 0;
-
-	case CMD_AXI_START:
-	case CMD_AXI_STOP:
-	case CMD_AXI_RESET:
 		return 0;
 
 	case CMD_CONFIG_FREE_BUF_ADDR: {
@@ -1869,6 +1852,9 @@ static long msm_vfe_subdev_ioctl(struct v4l2_subdev *sd,
 						flags);
 				if (op_mode & SNAPSHOT_MASK_MODE) {
 					vfe2x_ctrl->stop_pending = 0;
+					vfe2x_send_isp_msg(vfe2x_ctrl,
+						msgs_map[MSG_STOP_ACK].
+						isp_id);
 					spin_unlock_irqrestore(
 							&vfe2x_ctrl->table_lock,
 							flags);

@@ -505,6 +505,8 @@ DECLARE_TASKLET(vpe_tasklet, vpe_do_tasklet, 0);
 
 static irqreturn_t vpe_parse_irq(int irq_num, void *data)
 {
+	if(!vpe_ctrl || !vpe_ctrl->vpebase)
+		return IRQ_HANDLED;
 	vpe_ctrl->irq_status = msm_camera_io_r_mb(vpe_ctrl->vpebase +
 							VPE_INTR_STATUS_OFFSET);
 	msm_camera_io_w_mb(vpe_ctrl->irq_status, vpe_ctrl->vpebase +
@@ -550,6 +552,11 @@ int vpe_enable(uint32_t clk_rate, struct msm_cam_media_controller *mctl)
 		goto vpe_clk_failed;
 
 #ifdef CONFIG_MSM_IOMMU
+	if (mctl->domain == NULL) {
+		pr_err("%s: iommu domain not initialized\n", __func__);
+		rc = -EINVAL;
+		goto src_attach_failed;
+	}
 	rc = iommu_attach_device(mctl->domain, vpe_ctrl->iommu_ctx_src);
 	if (rc < 0) {
 		pr_err("%s: Device attach failed\n", __func__);
@@ -903,7 +910,7 @@ static long msm_vpe_subdev_ioctl(struct v4l2_subdev *sd,
 	mctl = v4l2_get_subdev_hostdata(sd);
 	switch (cmd) {
 	case VIDIOC_MSM_VPE_INIT: {
-		msm_vpe_subdev_init(sd);
+		rc = msm_vpe_subdev_init(sd);
 		break;
 		}
 
@@ -951,8 +958,12 @@ static long msm_vpe_subdev_ioctl(struct v4l2_subdev *sd,
 			pp_event_info.ack.cmd, pp_event_info.ack.status,
 			pp_event_info.ack.cookie);
 		if (copy_to_user((void __user *)v4l2_ioctl->ioctl_ptr,
-			&pp_event_info,	sizeof(struct msm_mctl_pp_event_info)))
+			&pp_event_info,	sizeof(struct msm_mctl_pp_event_info))) {
+			kfree(pp_frame_info);
+			kfree(event_qcmd);
 			pr_err("%s PAYLOAD Copy to user failed ", __func__);
+	                return -EINVAL;
+		 }
 
 		kfree(pp_frame_info);
 		kfree(event_qcmd);
@@ -1028,6 +1039,7 @@ static int msm_vpe_subdev_close(struct v4l2_subdev *sd,
 		msm_mctl_unmap_user_frame(&frame_info->dest_frame,
 			frame_info->p_mctl->client, mctl->domain_num);
 	}
+	vpe_ctrl->pp_frame_info = NULL;
 	/* Drain the payload queue. */
 	msm_queue_drain(&vpe_ctrl->eventData_q, list_eventdata);
 	atomic_dec(&vpe_ctrl->active);

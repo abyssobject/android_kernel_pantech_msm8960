@@ -28,7 +28,6 @@
 #include <linux/fs.h>
 #include <linux/list.h>
 #include <linux/uaccess.h>
-
 #include <linux/poll.h>
 #include <media/msm_camera.h>
 #include <mach/camera.h>
@@ -319,6 +318,15 @@ static int msm_pmem_table_add(struct hlist_head *ptype,
 			goto out1;
 		ion_phys(client_for_ion, region->handle,
 			&paddr, (size_t *)&len);
+#else
+	rc = get_pmem_file(info->fd, &paddr, &kvstart, &len, &file);
+	if (rc < 0) {
+		pr_err("%s: get_pmem_file fd %d error %d\n",
+			__func__,
+			info->fd, rc);
+		goto out1;
+	}
+	region->file = file;
 #endif
 	if (!info->len)
 		info->len = len;
@@ -355,6 +363,8 @@ static int msm_pmem_table_add(struct hlist_head *ptype,
 out2:
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 	ion_free(client_for_ion, region->handle);
+#else
+	put_pmem_file(region->file);
 #endif
 out1:
 	kfree(region);
@@ -546,7 +556,8 @@ static unsigned long msm_pmem_frame_vtop_lookup(struct msm_sync *sync,
 	unsigned long flags = 0;
 
 	spin_lock_irqsave(&sync->pmem_frame_spinlock, flags);
-	hlist_for_each_entry_safe(region, n, &sync->pmem_frames, list) {
+	hlist_for_each_entry_safe(region,
+		n, &sync->pmem_frames, list) {
 		if (((unsigned long)(region->info.vaddr) == buffer) &&
 				(region->info.planar0_off == p0_off) &&
 				(region->info.planar1_off == p1_off) &&
@@ -637,6 +648,8 @@ static int __msm_pmem_table_del(struct msm_sync *sync,
 				hlist_del(node);
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 				ion_free(client_for_ion, region->handle);
+#else
+				put_pmem_file(region->file);
 #endif
 				kfree(region);
 				CDBG("%s: type %d, vaddr  0x%p\n",
@@ -659,6 +672,8 @@ static int __msm_pmem_table_del(struct msm_sync *sync,
 				hlist_del(node);
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 				ion_free(client_for_ion, region->handle);
+#else
+				put_pmem_file(region->file);
 #endif
 				kfree(region);
 				CDBG("%s: type %d, vaddr  0x%p\n",
@@ -680,6 +695,8 @@ static int __msm_pmem_table_del(struct msm_sync *sync,
 				hlist_del(node);
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 				ion_free(client_for_ion, region->handle);
+#else
+				put_pmem_file(region->file);
 #endif
 				kfree(region);
 				CDBG("%s: type %d, vaddr  0x%p\n",
@@ -1084,6 +1101,7 @@ static int msm_divert_frame(struct msm_sync *sync,
 		return rc;
 	}
 
+        memset(&(buf.fmain), 0, sizeof(struct msm_frame));
 	buf.fmain.buffer = (unsigned long)pinfo.vaddr;
 	buf.fmain.planar0_off = pinfo.planar0_off;
 	buf.fmain.planar1_off = pinfo.planar1_off;
@@ -1218,7 +1236,7 @@ static int msm_get_stats(struct msm_sync *sync, void __user *arg)
 	}
 
 	rc = 0;
-
+        memset(&stats, 0, sizeof(stats));
 	qcmd = msm_dequeue(&sync->event_q, list_config);
 	if (!qcmd) {
 		/* Should be associated with wait_event
@@ -2837,6 +2855,61 @@ static long msm_ioctl_config(struct file *filep, unsigned int cmd,
 		rc = pmsm->sync->sctrl.s_config(argp);
 		break;
 
+	case MSM_CAM_IOCTL_FLASH_LED_CFG: {
+		uint32_t led_state;
+		if (copy_from_user(&led_state, argp, sizeof(led_state))) {
+			ERR_COPY_FROM_USER();
+			rc = -EFAULT;
+		} else
+			rc = msm_camera_flash_set_led_state(pmsm->sync->
+					sdata->flash_data, led_state);
+		break;
+	}
+
+	case MSM_CAM_IOCTL_STROBE_FLASH_CFG: {
+		uint32_t flash_type;
+		if (copy_from_user(&flash_type, argp, sizeof(flash_type))) {
+			pr_err("msm_strobe_flash_init failed");
+			ERR_COPY_FROM_USER();
+			rc = -EFAULT;
+		} else {
+			CDBG("msm_strobe_flash_init enter");
+			rc = msm_strobe_flash_init(pmsm->sync, flash_type);
+		}
+		break;
+	}
+
+	case MSM_CAM_IOCTL_STROBE_FLASH_RELEASE:
+		if (pmsm->sync->sdata->strobe_flash_data) {
+			rc = pmsm->sync->sfctrl.strobe_flash_release(
+				pmsm->sync->sdata->strobe_flash_data, 0);
+		}
+		break;
+
+	case MSM_CAM_IOCTL_STROBE_FLASH_CHARGE: {
+		uint32_t charge_en;
+		if (copy_from_user(&charge_en, argp, sizeof(charge_en))) {
+			ERR_COPY_FROM_USER();
+			rc = -EFAULT;
+		} else
+			rc = pmsm->sync->sfctrl.strobe_flash_charge(
+			pmsm->sync->sdata->strobe_flash_data->flash_charge,
+			charge_en, pmsm->sync->sdata->strobe_flash_data->
+				flash_recharge_duration);
+		break;
+	}
+
+	case MSM_CAM_IOCTL_FLASH_CTRL: {
+		struct flash_ctrl_data flash_info;
+		if (copy_from_user(&flash_info, argp, sizeof(flash_info))) {
+			ERR_COPY_FROM_USER();
+			rc = -EFAULT;
+		} else
+			rc = msm_flash_ctrl(pmsm->sync->sdata, &flash_info);
+
+		break;
+	}
+
 	case MSM_CAM_IOCTL_ERROR_CONFIG:
 		rc = msm_error_config(pmsm->sync, argp);
 		break;
@@ -2994,6 +3067,8 @@ static int __msm_release(struct msm_sync *sync)
 			hlist_del(hnode);
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 				ion_free(client_for_ion, region->handle);
+#else
+			put_pmem_file(region->file);
 #endif
 			kfree(region);
 		}
@@ -3003,6 +3078,8 @@ static int __msm_release(struct msm_sync *sync)
 			hlist_del(hnode);
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 				ion_free(client_for_ion, region->handle);
+#else
+			put_pmem_file(region->file);
 #endif
 			kfree(region);
 		}

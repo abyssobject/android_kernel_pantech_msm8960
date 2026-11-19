@@ -47,6 +47,14 @@ static int msm_csid_cid_lut(
 		return -EINVAL;
 	}
 	for (i = 0; i < csid_lut_params->num_cid && i < 16; i++) {
+		if (csid_lut_params->vc_cfg[i].cid >=
+			csid_lut_params->num_cid ||
+			csid_lut_params->vc_cfg[i].cid < 0) {
+			pr_err("%s: cid outside range %d\n",
+				__func__, csid_lut_params->vc_cfg[i].cid);
+			return -EINVAL;
+		}
+
 		CDBG("%s lut params num_cid = %d, cid = %d, dt = %x, df = %d\n",
 			__func__,
 			csid_lut_params->num_cid,
@@ -133,7 +141,7 @@ static irqreturn_t msm_csid_irq(int irq_num, void *data)
 	uint32_t unmapped_header; 
 #endif
 	struct csid_device *csid_dev = data;
-	if (!csid_dev) {
+	if (!csid_dev||!csid_dev->base) {
 		pr_err("%s:%d csid_dev NULL\n", __func__, __LINE__);
 		return IRQ_HANDLED;
 	}
@@ -462,6 +470,13 @@ static long msm_csid_cmd(struct csid_device *csid_dev, void *arg)
 			rc = -EFAULT;
 			break;
 		}
+		if (csid_params.lut_params.num_cid < 1 ||
+			csid_params.lut_params.num_cid > 16) {
+			pr_err("%s: %d num_cid outside range\n",
+				__func__, __LINE__);
+			rc = -EINVAL;
+			break;
+		}
 		vc_cfg = kzalloc(csid_params.lut_params.num_cid *
 			sizeof(struct msm_camera_csid_vc_cfg),
 			GFP_KERNEL);
@@ -630,7 +645,7 @@ static int csid_probe(struct platform_device *pdev)
 csid_no_resource:
 	mutex_destroy(&new_csid_dev->mutex);
 	kfree(new_csid_dev);
-	return 0;
+	return rc;
 }
 
 static const struct of_device_id msm_csid_dt_match[] = {

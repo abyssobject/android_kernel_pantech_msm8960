@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundataion. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -355,6 +355,11 @@ int msm_camera_enable_vreg(struct device *dev, struct camera_vreg_t *cam_vreg,
 					continue;
 			} else
 				j = i;
+			if (IS_ERR(reg_ptr[j])) {
+				pr_err("%s: %s null regulator\n",
+					__func__, cam_vreg[j].reg_name);
+				return -EINVAL;
+			}
 			regulator_disable(reg_ptr[j]);
 			if (cam_vreg[j].delay > 20)
 				msleep(cam_vreg[j].delay);
@@ -372,6 +377,11 @@ disable_vreg:
 				continue;
 		} else
 			j = i;
+		if (IS_ERR(reg_ptr[j])) {
+			pr_err("%s: %s null regulator\n",
+				__func__, cam_vreg[j].reg_name);
+			return -EINVAL;
+		}
 		regulator_disable(reg_ptr[j]);
 		if (cam_vreg[j].delay > 20)
 			msleep(cam_vreg[j].delay);
@@ -530,43 +540,4 @@ void msm_camera_bus_scale_cfg(uint32_t bus_perf_client,
 	default:
 		pr_warning("%s: INVALID CASE\n", __func__);
 	}
-}
-
-int msm_camera_init_gpio_table(struct gpio *gpio_tbl, uint8_t gpio_tbl_size,
-	int gpio_en)
-{
-	int rc = 0;
-
-	if (gpio_en) {
-		rc = gpio_request_array(gpio_tbl, gpio_tbl_size);
-		if (rc < 0) {
-			pr_err("%s:%d failed\n" , __func__, __LINE__);
-			return rc;
-		}
-	} else {
-		gpio_free_array(gpio_tbl, gpio_tbl_size);
-	}
-	return rc;
-}
-
-int msm_camera_set_gpio_table(struct msm_gpio_set_tbl *gpio_tbl,
-	uint8_t gpio_tbl_size, int gpio_en)
-{
-	int rc = 0, i;
-
-	if (gpio_en) {
-		for (i = 0; i < gpio_tbl_size; i++) {
-			gpio_set_value_cansleep(gpio_tbl[i].gpio,
-				gpio_tbl[i].flags);
-			usleep_range(gpio_tbl[i].delay,
-				gpio_tbl[i].delay + 1000);
-		}
-	} else {
-		for (i = gpio_tbl_size - 1; i >= 0; i--) {
-			if (gpio_tbl[i].flags)
-				gpio_set_value_cansleep(gpio_tbl[i].gpio,
-					GPIOF_OUT_INIT_LOW);
-		}
-	}
-	return rc;
 }

@@ -14,6 +14,7 @@
 #include "msm.h"
 #include "msm_ispif.h"
 #include "msm_camera_i2c_mux.h"
+#include "msm_camera_i2c.h"
 /*=============================================================*/
 
 long msm_sensor_bayer_subdev_ioctl(struct v4l2_subdev *sd,
@@ -333,7 +334,7 @@ int32_t msm_sensor_bayer_config(struct msm_sensor_ctrl_t *s_ctrl,
 	}
 	case CFG_GET_EEPROM_DATA: {
 		if (copy_to_user((void *)cdata.cfg.eeprom_data.eeprom_data,
-			&s_ctrl->eeprom_data.data, s_ctrl->eeprom_data.length)){
+			&s_ctrl->eeprom_data, s_ctrl->eeprom_data.length)) {
 			pr_err("%s:%d failed\n", __func__, __LINE__);
 			rc = -EFAULT;
 		}
@@ -660,7 +661,7 @@ int32_t msm_sensor_bayer_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	return rc;
 }
 
-int32_t msm_sensor_bayer_eeprom_read(struct msm_sensor_ctrl_t *s_ctrl)
+static int32_t msm_sensor_bayer_eeprom_read(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	uint32_t reg_addr = 0;
 	uint8_t *data = s_ctrl->eeprom_data.data;
@@ -751,10 +752,7 @@ int32_t msm_sensor_bayer_i2c_probe(struct i2c_client *client,
 	msm_sensor_register(&s_ctrl->sensor_v4l2_subdev);
 	s_ctrl->sensor_v4l2_subdev.entity.revision =
 		s_ctrl->sensor_v4l2_subdev.devnode->num;
-	if (s_ctrl->func_tbl->sensor_read_eeprom != NULL)
-		s_ctrl->func_tbl->sensor_read_eeprom(s_ctrl);
-	else
-		msm_sensor_bayer_eeprom_read(s_ctrl);
+	msm_sensor_bayer_eeprom_read(s_ctrl);
 	goto power_down;
 probe_fail:
 	pr_err("%s %s_i2c_probe failed\n", __func__, client->name);

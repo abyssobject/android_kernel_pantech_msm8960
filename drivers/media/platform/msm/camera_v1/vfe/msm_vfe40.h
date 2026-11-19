@@ -796,7 +796,7 @@ struct vfe40_frame_extra {
 #define VFE_BUS_STATS_BE_WR_PING_ADDR    0x00000168
 #define VFE_BUS_STATS_BE_WR_PONG_ADDR    0x0000016C
 #define VFE_BUS_STATS_BE_WR_ADDR_CFG    0x00000170
-#define VFE_BUS_STATS_BE_WR_UB_CFG          0x00000174
+#define VFE_BUS_STATS_BE_UB_CFG          0x00000174
 #define VFE_BUS_STATS_BE_WR_FRAMEDROP_PATTERN  0x00000178
 #define VFE_BUS_STATS_BE_WR_IRQ_SUBSAMPLE_PATTERN 0x0000017C
 
@@ -901,25 +901,22 @@ struct vfe40_frame_extra {
 #define VFE40_OUTPUT_MODE_TERTIARY1		BIT(10)
 #define VFE40_OUTPUT_MODE_TERTIARY2		BIT(11)
 
-#define VFE40_VBIF_CLKON					0x4
-#define VFE40_VBIF_IN_RD_LIM_CONF0			0xB0
-#define VFE40_VBIF_IN_RD_LIM_CONF1			0xB4
-#define VFE40_VBIF_IN_RD_LIM_CONF2			0xB8
-#define VFE40_VBIF_IN_WR_LIM_CONF0			0xC0
-#define VFE40_VBIF_IN_WR_LIM_CONF1			0xC4
-#define VFE40_VBIF_IN_WR_LIM_CONF2			0xC8
-#define VFE40_VBIF_OUT_RD_LIM_CONF0			0xD0
-#define VFE40_VBIF_OUT_WR_LIM_CONF0			0xD4
-#define VFE40_VBIF_DDR_OUT_MAX_BURST		0xD8
-#define VFE40_VBIF_OCMEM_OUT_MAX_BURST		0xDC
-#define VFE40_VBIF_ARB_CTL					0xF0
-#define VFE40_VBIF_DDR_ARB_CONF0			0xF4
-#define VFE40_VBIF_DDR_ARB_CONF1			0xF8
-#define VFE40_VBIF_ROUND_ROBIN_QOS_ARB		0x124
-#define VFE40_VBIF_OUT_AXI_AMEMTYPE_CONF0	0x160
-#define VFE40_VBIF_OUT_AXI_AMEMTYPE_CONF1	0x164
-#define VFE40_VBIF_OUT_AXI_AOOO_EN			0x178
-#define VFE40_VBIF_OUT_AXI_AOOO				0x17C
+#define VFE40_VBIF_CLKON				0x4
+#define VFE40_VBIF_IN_RD_LIM_CONF0		0xB0
+#define VFE40_VBIF_IN_RD_LIM_CONF1		0xB4
+#define VFE40_VBIF_IN_RD_LIM_CONF2		0xB8
+#define VFE40_VBIF_IN_WR_LIM_CONF0		0xC0
+#define VFE40_VBIF_IN_WR_LIM_CONF1		0xC4
+#define VFE40_VBIF_IN_WR_LIM_CONF2		0xC8
+#define VFE40_VBIF_OUT_RD_LIM_CONF0		0xD0
+#define VFE40_VBIF_OUT_WR_LIM_CONF0		0xD4
+#define VFE40_VBIF_DDR_OUT_MAX_BURST	0xD8
+#define VFE40_VBIF_ARB_CTL				0xF0
+#define VFE40_VBIF_DDR_ARB_CONF0		0xF4
+#define VFE40_VBIF_DDR_ARB_CONF1		0xF8
+#define VFE40_VBIF_ROUND_ROBIN_QOS_ARB	0x124
+#define VFE40_VBIF_OUT_AXI_AOOO_EN		0x178
+#define VFE40_VBIF_OUT_AXI_AOOO			0x17C
 
 struct vfe_stats_control {
 	uint32_t droppedStatsFrameCount;
@@ -1017,10 +1014,9 @@ struct vfe40_ctrl_type {
 	uint32_t sync_timer_number;
 
 	struct msm_ver_num_info ver_num;
-	struct vfe_stats_control beStatsControl;
-	struct vfe_stats_control bfStatsControl;
+	struct vfe_stats_control afbfStatsControl;
 	struct vfe_stats_control awbStatsControl;
-	struct vfe_stats_control bgStatsControl;
+	struct vfe_stats_control aecbgStatsControl;
 	struct vfe_stats_control ihistStatsControl;
 	struct vfe_stats_control rsStatsControl;
 	struct vfe_stats_control csStatsControl;
@@ -1039,16 +1035,13 @@ struct vfe40_ctrl_type {
 	uint32_t simultaneous_sof_stat;
 };
 
-#define statsBeNum      0
-#define statsBgNum      1
-#define statsBfNum      2
-#define statsAwbNum     3
-#define statsRsNum      4
-#define statsCsNum      5
-#define statsIhistNum   6
-#define statsSkinNum    7
-
-#define VFE_STATS_BUS_REG_NUM  6
+#define statsAeNum      0
+#define statsAfNum      1
+#define statsAwbNum     2
+#define statsRsNum      3
+#define statsCsNum      4
+#define statsIhistNum   5
+#define statsSkinNum    6
 
 struct vfe_cmd_stats_ack {
 	uint32_t  nextStatsBuf;
