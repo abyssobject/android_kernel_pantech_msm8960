@@ -1227,6 +1227,22 @@ static int ion_sync_for_device(struct ion_client *client, int fd)
 	return 0;
 }
 
+
+/*
+ * ef52: pre-3.4 msm ION ABI used by the APQ8064 audio ACDB loader blob.
+ * The allocation struct had no separate heap mask: heap bits and the
+ * cache flag (bit 0) shared one word, 16 bytes in total, so its
+ * ION_IOC_ALLOC number differs and 3.10 answered -ENOTTY.
+ */
+struct ion_allocation_data_old {
+	size_t len;
+	size_t align;
+	unsigned int flags;
+	struct ion_handle *handle;
+};
+#define ION_IOC_ALLOC_OLD	_IOWR(ION_IOC_MAGIC, 0, \
+				      struct ion_allocation_data_old)
+
 static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct ion_client *client = filp->private_data;
@@ -1248,6 +1264,26 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			return PTR_ERR(data.handle);
 		}
 
+		if (copy_to_user((void __user *)arg, &data, sizeof(data))) {
+			ion_free(client, data.handle);
+			return -EFAULT;
+		}
+		break;
+	}
+	case ION_IOC_ALLOC_OLD:
+	{
+		struct ion_allocation_data_old data;
+
+		if (copy_from_user(&data, (void __user *)arg, sizeof(data)))
+			return -EFAULT;
+		data.handle = ion_alloc(client, data.len, data.align,
+					data.flags & ~1U, data.flags & 1U);
+		if (IS_ERR(data.handle)) {
+			pr_err_ratelimited("ion: %s(%d) old ION_IOC_ALLOC len %zu heaps 0x%x failed %ld\n",
+				current->comm, current->pid, data.len,
+				data.flags & ~1U, PTR_ERR(data.handle));
+			return PTR_ERR(data.handle);
+		}
 		if (copy_to_user((void __user *)arg, &data, sizeof(data))) {
 			ion_free(client, data.handle);
 			return -EFAULT;
