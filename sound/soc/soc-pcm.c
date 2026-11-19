@@ -953,6 +953,24 @@ static int dpcm_prune_paths(struct snd_soc_pcm_runtime *fe, int stream,
 	return prune;
 }
 
+static bool dpcm_is_legacy_be_widget(struct snd_soc_card *card,
+		struct snd_soc_dapm_widget *widget, int stream)
+{
+	int i;
+
+	for (i = 0; i < card->num_links; i++) {
+		struct snd_soc_pcm_runtime *be = &card->rtd[i];
+
+		if (!be->dai_link->no_pcm)
+			continue;
+		if (stream == SNDRV_PCM_STREAM_PLAYBACK ?
+		    be->cpu_dai->playback_widget == widget :
+		    be->cpu_dai->capture_widget == widget)
+			return true;
+	}
+	return false;
+}
+
 static int dpcm_add_paths(struct snd_soc_pcm_runtime *fe, int stream,
 	struct snd_soc_dapm_widget_list **list_)
 {
@@ -968,6 +986,12 @@ static int dpcm_add_paths(struct snd_soc_pcm_runtime *fe, int stream,
 		case snd_soc_dapm_dai_in:
 		case snd_soc_dapm_dai_out:
 			break;
+		case snd_soc_dapm_aif_in:
+		case snd_soc_dapm_aif_out:
+			/* ef52: legacy MSM back end bound to a routing AIF widget */
+			if (dpcm_is_legacy_be_widget(card, list->widgets[i], stream))
+				break;
+			continue;
 		default:
 			continue;
 		}
