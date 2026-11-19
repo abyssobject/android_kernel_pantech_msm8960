@@ -48,6 +48,9 @@
 #include "mdm_private.h"
 #include "sysmon.h"
 
+/* board has no AP2MDM_CHNLRDY line; AP2MDM_WAKEUP plays that role (3.4) */
+static int mdm_chnlrdy_legacy;
+
 #define MDM_MODEM_TIMEOUT	6000
 #define MDM_MODEM_DELTA	100
 #define MDM_BOOT_TIMEOUT	60000L
@@ -480,7 +483,8 @@ static long mdm_modem_ioctl(struct file *filp, unsigned int cmd,
 		/* If userspace has reset the peripheral device then
 		 * inform the modem here.
 		 */
-		if (GPIO_IS_VALID(MDM_GPIO(AP2MDM_CHNLRDY)))
+		if (GPIO_IS_VALID(MDM_GPIO(AP2MDM_CHNLRDY)) &&
+		    !mdm_chnlrdy_legacy)
 				gpio_direction_output(
 				   MDM_GPIO(AP2MDM_CHNLRDY), 1);
 
@@ -1024,6 +1028,28 @@ static int mdm_gpios_from_resources(struct platform_device *pdev,
 							"USB_SW");
 	MDM_GPIO(USB_SW) = pres ? pres->start : -1;
 
+	/*
+	 * AP2MDM_CHNLRDY: 3.4-era board files (APQ8064 / ef52) have no such
+	 * line. Left at 0 from kzalloc it made the driver drive msm gpio 0
+	 * (the panel vsync on ef52). On those boards AP2MDM_WAKEUP is the
+	 * "apq ready" signal: the 3.4 driver drives it low at power-on and
+	 * high only after the HSIC peripheral has been reconnected, and the
+	 * MDM does not attach to HSIC until it sees it.
+	 */
+	pres = platform_get_resource_byname(pdev, IORESOURCE_IO,
+							"AP2MDM_CHNLRDY");
+	if (pres) {
+		MDM_GPIO(AP2MDM_CHNLRDY) = pres->start;
+	} else {
+		MDM_GPIO(AP2MDM_CHNLRDY) = MDM_GPIO(AP2MDM_WAKEUP);
+		MDM_GPIO(AP2MDM_WAKEUP) = -1;
+		mdm_chnlrdy_legacy = 1;
+	}
+
+	/* vddmin lines come from pdata->vddmin_resource on these boards */
+	MDM_GPIO(AP2MDM_VDDMIN) = -1;
+	MDM_GPIO(MDM2AP_VDDMIN) = -1;
+
 	return 0;
 }
 
@@ -1212,10 +1238,11 @@ static int mdm_configure_ipc(struct mdm_device *mdev)
 		}
 	}
 	if (GPIO_IS_VALID(MDM_GPIO(USB_SW))) {
-		if (gpio_request(MDM_GPIO(USB_SW), "USB_SW"))
+		if (gpio_request(MDM_GPIO(USB_SW), "USB_SW")) {
 			pr_err("%s Failed to configure usb switch gpio\n",
 				   __func__);
 			goto fatal_err;
+		}
 	}
 	gpio_direction_output(MDM_GPIO(AP2MDM_STATUS), 0);
 	gpio_direction_output(MDM_GPIO(AP2MDM_ERRFATAL), 0);
