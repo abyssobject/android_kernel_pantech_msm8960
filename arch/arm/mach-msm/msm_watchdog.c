@@ -11,6 +11,8 @@
  *
  */
 
+#include <asm/irq_regs.h>
+#include <linux/cpufreq.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -375,6 +377,21 @@ static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 		}
 
 		msm_watchdog_resume(NULL);
+	}
+
+	/*
+	 * ef52 bring-up: show where the CPU that took the bark was interrupted
+	 * and the current CPU frequencies, so a stall leaves a usable trace.
+	 */
+	{
+		struct pt_regs *regs = get_irq_regs();
+		int cpu;
+
+		for_each_online_cpu(cpu)
+			pr_info("wdog bark: cpu%d online freq=%u kHz\n", cpu,
+				cpufreq_quick_get(cpu));
+		if (regs)
+			show_regs(regs);
 	}
 
 	panic("Apps watchdog bark received!");
