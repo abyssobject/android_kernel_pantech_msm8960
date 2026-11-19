@@ -1384,6 +1384,17 @@ u32 mdp_get_panel_framerate(struct msm_fb_data_type *mfd)
 	u32 frame_rate = 0, pixel_rate = 0, total_pixel;
 	struct msm_panel_info *panel_info = &mfd->panel_info;
 
+	/*
+	 * ef52: a MIPI panel's configured frame rate wins, as on the 3.4
+	 * kernel. The Sony command-mode panel sets 62 Hz; the pixel-clock
+	 * estimate below gives 90 Hz, which userspace (HWC vsync period via
+	 * MSMFB_METADATA_GET) then reported as the display refresh rate.
+	 */
+	if ((panel_info->type == MIPI_VIDEO_PANEL ||
+	     panel_info->type == MIPI_CMD_PANEL) &&
+	    panel_info->mipi.frame_rate)
+		return panel_info->mipi.frame_rate;
+
 	pixel_rate =
 		(panel_info->type == MIPI_CMD_PANEL ||
 		 panel_info->type == MIPI_VIDEO_PANEL) ?
