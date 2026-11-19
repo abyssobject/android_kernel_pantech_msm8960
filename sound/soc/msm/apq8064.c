@@ -2895,6 +2895,19 @@ static int snd_subsystem_GPIO_Init(void)
 #endif
 #endif /* CONFIG_SKY_SND_EXTERNAL_AMP */
 
+static int ef52_snd_delay;
+module_param(ef52_snd_delay, int, 0444);
+static struct delayed_work ef52_snd_work;
+
+static void ef52_snd_register(struct work_struct *work)
+{
+	int ret;
+
+	pr_info("ef52_snd: registering sound card now\n");
+	ret = platform_device_add(msm_snd_device);
+	pr_info("ef52_snd: platform_device_add returned %d\n", ret);
+}
+
 static int __init msm_audio_init(void)
 {
 	int ret;
@@ -2928,11 +2941,24 @@ static int __init msm_audio_init(void)
 	}
 
 	platform_set_drvdata(msm_snd_device, &snd_soc_card_msm);
-	ret = platform_device_add(msm_snd_device);
-	if (ret) {
-		platform_device_put(msm_snd_device);
-		kfree(mbhc_cfg.calibration);
-		return ret;
+	if (ef52_snd_delay) {
+		/*
+		 * Bring-up debug: instantiate the card later, once the watchdogs
+		 * and the userspace boot log are running, so a hang in the card
+		 * probe leaves a log behind.
+		 */
+		pr_info("%s: delaying sound card registration by %d s\n",
+			__func__, ef52_snd_delay);
+		INIT_DELAYED_WORK(&ef52_snd_work, ef52_snd_register);
+		schedule_delayed_work(&ef52_snd_work, ef52_snd_delay * HZ);
+		ret = 0;
+	} else {
+		ret = platform_device_add(msm_snd_device);
+		if (ret) {
+			platform_device_put(msm_snd_device);
+			kfree(mbhc_cfg.calibration);
+			return ret;
+		}
 	}
 
 #if defined(CONFIG_SKY_SND_EXTERNAL_AMP) //YDA165
