@@ -2024,6 +2024,7 @@ static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
+#ifdef CONFIG_SND_SOC_MSM_QDSP6_HDMI_AUDIO
 static int msm_hdmi_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params)
 {
@@ -2043,6 +2044,7 @@ static int msm_hdmi_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
+#endif
 
 static int msm_btsco_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params)
@@ -2607,7 +2609,12 @@ static struct snd_soc_dai_link msm_dai[] = {
 		.be_id = MSM_BACKEND_DAI_INT_FM_TX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 	},
-	/* HDMI BACK END DAI Link */
+#ifdef CONFIG_SND_SOC_MSM_QDSP6_HDMI_AUDIO
+	/*
+	 * HDMI BACK END DAI Link. ef52 has no HDMI and its kernel does not build
+	 * msm-dai-q6-hdmi; with the link present the card waits for that DAI
+	 * forever ("No soundcards found"). Pantech's 3.4 tree had this guard.
+	 */
 	{
 		.name = LPASS_BE_HDMI,
 		.stream_name = "HDMI Playback",
@@ -2619,6 +2626,7 @@ static struct snd_soc_dai_link msm_dai[] = {
 		.be_id = MSM_BACKEND_DAI_HDMI_RX,
 		.be_hw_params_fixup = msm_hdmi_be_hw_params_fixup,
 	},
+#endif
 	/* Backend AFE DAI Links */
 	{
 		.name = LPASS_BE_AFE_PCM_RX,
