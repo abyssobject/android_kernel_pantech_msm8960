@@ -1334,6 +1334,12 @@ static int msm8960_phone_mode_put(struct snd_kcontrol *kcontrol,
 }
 #endif
 
+/*
+ * ef52: msm_enum[] lost the 3.4 HDMI_RX channel entry (index 3) in the 3.10
+ * merge, so the Pantech controls below use indices one lower than in 3.4.
+ * "Phone Mode" pointed past the array and the first mixer enumeration by the
+ * audio HAL oopsed in snd_soc_info_enum_ext().
+ */
 static const struct snd_kcontrol_new tabla_msm_controls[] = {
 	SOC_ENUM_EXT("Speaker Function", msm_enum[0], msm_get_spk,
 		msm_set_spk),
@@ -1354,7 +1360,7 @@ static const struct snd_kcontrol_new tabla_msm_controls[] = {
 					msm_hdmi_rate_put),
 //HDJ_LS4_Sound_20120503
 	//20140522 frogLove_KK : change from 3 to 5 on KK
-	SOC_ENUM_EXT("Headset Status", msm_enum[5], headset_status_get,
+	SOC_ENUM_EXT("Headset Status", msm_enum[4], headset_status_get,
 		headset_status_set),
 //HDJ_LS4_Sound_20120503_END
 
@@ -1369,7 +1375,7 @@ static const struct snd_kcontrol_new tabla_msm_controls[] = {
 
 #if QVOICE
        //20140522 frogLove_KK : change from 4 to 6 on KK
-       SOC_ENUM_EXT("Phone Mode", msm_enum[6],
+       SOC_ENUM_EXT("Phone Mode", msm_enum[5],
 		msm8960_phone_mode_get, msm8960_phone_mode_put),
 #endif 
 };
