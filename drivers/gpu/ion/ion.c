@@ -1241,8 +1241,12 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		data.handle = ion_alloc(client, data.len, data.align,
 					     data.heap_mask, data.flags);
 
-		if (IS_ERR(data.handle))
+		if (IS_ERR(data.handle)) {
+			pr_err_ratelimited("ion: %s(%d) ION_IOC_ALLOC len %zu align %zu heap_mask 0x%x flags 0x%x failed %ld\n",
+				current->comm, current->pid, data.len, data.align,
+				data.heap_mask, data.flags, PTR_ERR(data.handle));
 			return PTR_ERR(data.handle);
+		}
 
 		if (copy_to_user((void __user *)arg, &data, sizeof(data))) {
 			ion_free(client, data.handle);
