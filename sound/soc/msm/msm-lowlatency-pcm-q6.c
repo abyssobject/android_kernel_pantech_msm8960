@@ -44,10 +44,16 @@ struct snd_msm_volume {
 	unsigned volume;
 };
 
-#define PLAYBACK_NUM_PERIODS		4
-#define PLAYBACK_MAX_PERIOD_SIZE	1024
+/*
+ * ef52: Pantech 3.4 values. The msm8960 audio HAL opens the low-latency
+ * stream with 2 periods of 240 frames (960 bytes); with the CAF 3.10 values
+ * (exactly 4 periods, <= 1024 bytes) hw_params failed with -EINVAL and the
+ * primary output never played.
+ */
+#define PLAYBACK_NUM_PERIODS		2
+#define PLAYBACK_MAX_PERIOD_SIZE	4096
 #define PLAYBACK_MIN_PERIOD_SIZE	512
-#define CAPTURE_NUM_PERIODS		4
+#define CAPTURE_NUM_PERIODS		2
 #define CAPTURE_MIN_PERIOD_SIZE		128
 #define CAPTURE_MAX_PERIOD_SIZE		1024
 
