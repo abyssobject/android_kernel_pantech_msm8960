@@ -3429,7 +3429,17 @@ int snd_soc_dapm_link_dai_widgets(struct snd_soc_card *card)
 
 		/* ...find all widgets with the same stream and link them */
 		list_for_each_entry(w, &card->widgets, list) {
-			if (w->dapm != dai_w->dapm)
+			/*
+			 * ef52: the MSM front-end CPU DAIs (msm-dai-fe) get their
+			 * widgets in the DAI's own context while the matching AIF
+			 * widgets (MM_DL1.., "MultiMedia1 Playback") belong to the
+			 * msm-pcm-routing platform, so also link a codec-less DAI
+			 * to a platform's AIF widgets; otherwise no DPCM path exists.
+			 */
+			if (w->dapm != dai_w->dapm &&
+			    !(!dai->codec && w->dapm->platform &&
+			      (w->id == snd_soc_dapm_aif_in ||
+			       w->id == snd_soc_dapm_aif_out)))
 				continue;
 
 			switch (w->id) {
