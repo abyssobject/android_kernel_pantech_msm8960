@@ -1127,6 +1127,21 @@ static void mdm_deconfigure_ipc(struct mdm_device *mdev)
 	}
 }
 
+/*
+ * Board files that predate device tree (APQ8064 / ef52) describe the MDM
+ * lines as IORESOURCE_IO gpio numbers only, as the 3.4 driver expected, and
+ * have no named IRQ resources. Fall back to the gpio's interrupt so the
+ * status / err-fatal / pbl-ready edges still reach the driver.
+ */
+static int mdm_get_irq(struct mdm_device *mdev, const char *name, int gpio)
+{
+	int irq = platform_get_irq_byname(mdev->pdev, name);
+
+	if (irq < 0 && GPIO_IS_VALID(gpio))
+		irq = gpio_to_irq(gpio);
+	return irq;
+}
+
 static int mdm_configure_ipc(struct mdm_device *mdev)
 {
 	struct mdm_modem_drv *mdm_drv = &mdev->mdm_data;
@@ -1236,7 +1251,7 @@ static int mdm_configure_ipc(struct mdm_device *mdev)
 	subsys_default_online(mdev->mdm_subsys_dev);
 
 	/* ERR_FATAL irq. */
-	irq = platform_get_irq_byname(mdev->pdev, "err_fatal_irq");
+	irq = mdm_get_irq(mdev, "err_fatal_irq", MDM_GPIO(MDM2AP_ERRFATAL));
 	if (irq < 0) {
 		pr_err("%s: bad MDM2AP_ERRFATAL IRQ resource, err = %d\n",
 			   __func__, irq);
@@ -1254,7 +1269,7 @@ static int mdm_configure_ipc(struct mdm_device *mdev)
 
 errfatal_err:
 	 /* status irq */
-	irq = platform_get_irq_byname(mdev->pdev, "status_irq");
+	irq = mdm_get_irq(mdev, "status_irq", MDM_GPIO(MDM2AP_STATUS));
 	if (irq < 0) {
 		pr_err("%s: bad MDM2AP_STATUS IRQ resource, err = %d\n",
 				__func__, irq);
@@ -1274,7 +1289,7 @@ errfatal_err:
 
 status_err:
 	if (GPIO_IS_VALID(MDM_GPIO(MDM2AP_PBLRDY))) {
-		irq =  platform_get_irq_byname(mdev->pdev, "plbrdy_irq");
+		irq = mdm_get_irq(mdev, "plbrdy_irq", MDM_GPIO(MDM2AP_PBLRDY));
 		if (irq < 0) {
 			pr_err("%s: could not get MDM2AP_PBLRDY IRQ resource\n",
 				 __func__);
