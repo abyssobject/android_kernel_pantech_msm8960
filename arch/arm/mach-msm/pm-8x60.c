@@ -1729,6 +1729,8 @@ static int msm_pm_8x60_probe(struct platform_device *pdev)
 			goto pm_8x60_probe_done;
 
 		memcpy(&pdata_local, d, sizeof(struct msm_pm_init_data_type));
+		/* board-file targets (8064) clock the CPUs through acpuclock */
+		use_acpuclk_apis = true;
 
 	} else {
 		ret = msm_pm_clk_init(pdev);
@@ -1777,6 +1779,10 @@ static int msm_pm_8x60_probe(struct platform_device *pdev)
 		memcpy(cp15_data.reg_data, pdata_local.cp15_data.reg_data,
 			pdata_local.cp15_data.reg_saved_state_size *
 			sizeof(uint32_t));
+		cp15_data.reg_saved_state_size =
+			pdata_local.cp15_data.reg_saved_state_size;
+		cp15_data.qsb_pc_vdd = pdata_local.cp15_data.qsb_pc_vdd;
+		cp15_data.save_cp15 = pdata_local.cp15_data.save_cp15;
 	}
 
 	msm_pm_set_flush_fn(pdata_local.pc_mode);
