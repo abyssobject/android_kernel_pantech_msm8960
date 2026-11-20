@@ -372,7 +372,7 @@ static irqreturn_t pm8xxx_alarm_trigger(int irq, void *dev_id)
 		goto rtc_alarm_handled;
 	}
 
-	ctrl_reg &= ~PM8xxx_RTC_ALARM_CLEAR;
+	ctrl_reg |= PM8xxx_RTC_ALARM_CLEAR;
 	rc = pm8xxx_write_wrapper(rtc_dd, &ctrl_reg, rtc_dd->rtc_base +
 						PM8XXX_ALARM_CTRL_OFFSET, 1);
 	if (rc < 0)
