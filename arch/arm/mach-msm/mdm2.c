@@ -11,6 +11,7 @@
  *
  */
 
+#include <linux/pm_runtime.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/err.h>
@@ -69,6 +70,18 @@ static void mdm_peripheral_disconnect(struct mdm_modem_drv *mdm_drv)
 	if (!mdm_drv->peripheral_status)
 		goto out;
 	platform_device_del(mdm_drv->pdata->peripheral_platform_device);
+	/*
+	 * ef52: the HSIC host is deleted and later re-added as the same struct
+	 * platform_device. Deleting it disables runtime PM twice: once in
+	 * ehci_hsic_msm_remove() (which must stay, it cancels pending runtime
+	 * work before the controller's resources are freed) and once in
+	 * device_pm_remove(). A freshly initialised device starts with one
+	 * disable, and the re-probe enables runtime PM only once, so the
+	 * re-added host kept runtime PM disabled ("unsupported"), never entered
+	 * LPM and system suspend failed with "msm_hsic_host: abort suspend".
+	 * Drop the extra disable so the re-add starts like a new device.
+	 */
+	pm_runtime_enable(&mdm_drv->pdata->peripheral_platform_device->dev);
 	mdm_drv->peripheral_status = 0;
 out:
 	mutex_unlock(&mdm_drv->peripheral_status_lock);
