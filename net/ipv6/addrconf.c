@@ -3780,6 +3780,7 @@ static const struct nla_policy ifa_ipv6_policy[IFA_MAX+1] = {
 	[IFA_ADDRESS]		= { .len = sizeof(struct in6_addr) },
 	[IFA_LOCAL]		= { .len = sizeof(struct in6_addr) },
 	[IFA_CACHEINFO]		= { .len = sizeof(struct ifa_cacheinfo) },
+	[IFA_FLAGS]		= { .type = NLA_U32 },
 };
 
 static int
@@ -3888,7 +3889,8 @@ inet6_rtm_newaddr(struct sk_buff *skb, struct nlmsghdr *nlh)
 		return -ENODEV;
 
 	/* We ignore other flags so far. */
-	ifa_flags = ifm->ifa_flags & (IFA_F_NODAD | IFA_F_HOMEADDRESS);
+	ifa_flags = tb[IFA_FLAGS] ? nla_get_u32(tb[IFA_FLAGS]) : ifm->ifa_flags;
+	ifa_flags &= IFA_F_NODAD | IFA_F_HOMEADDRESS;
 
 	ifa = ipv6_get_ifaddr(net, pfx, dev, 1);
 	if (ifa == NULL) {
@@ -3954,7 +3956,8 @@ static inline int inet6_ifaddr_msgsize(void)
 {
 	return NLMSG_ALIGN(sizeof(struct ifaddrmsg))
 	       + nla_total_size(16) /* IFA_ADDRESS */
-	       + nla_total_size(sizeof(struct ifa_cacheinfo));
+	       + nla_total_size(sizeof(struct ifa_cacheinfo))
+	       + nla_total_size(4)  /* IFA_FLAGS */;
 }
 
 static int inet6_fill_ifaddr(struct sk_buff *skb, struct inet6_ifaddr *ifa,
@@ -3992,7 +3995,8 @@ static int inet6_fill_ifaddr(struct sk_buff *skb, struct inet6_ifaddr *ifa,
 	}
 
 	if (nla_put(skb, IFA_ADDRESS, 16, &ifa->addr) < 0 ||
-	    put_cacheinfo(skb, ifa->cstamp, ifa->tstamp, preferred, valid) < 0) {
+	    put_cacheinfo(skb, ifa->cstamp, ifa->tstamp, preferred, valid) < 0 ||
+	    nla_put_u32(skb, IFA_FLAGS, ifa->flags) < 0) {
 		nlmsg_cancel(skb, nlh);
 		return -EMSGSIZE;
 	}
