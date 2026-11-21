@@ -1968,6 +1968,7 @@ struct cgroup_subsys cpuset_subsys = {
 	.css_online = cpuset_css_online,
 	.css_offline = cpuset_css_offline,
 	.css_free = cpuset_css_free,
+	.allow_attach = subsys_cgroup_allow_attach,
 	.can_attach = cpuset_can_attach,
 	.cancel_attach = cpuset_cancel_attach,
 	.attach = cpuset_attach,
