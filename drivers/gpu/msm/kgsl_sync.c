@@ -156,7 +156,6 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 		ret = -EINVAL;
 		goto fail_fd;
 	}
-	sync_fence_install(fence, priv.fence_fd);
 
 	if (copy_to_user(data, &priv, sizeof(priv))) {
 		ret = -EFAULT;
@@ -172,11 +171,20 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 	if (ret)
 		goto fail_event;
 
+	/*
+	 * Install the fd only once nothing can fail any more. The error path
+	 * below used to put_unused_fd() and sync_fence_put() an fd that was
+	 * already installed, leaving a freed struct file in the caller's fd
+	 * table ("alloc_fd: slot N not NULL!", use-after-free of whatever
+	 * reused that memory).
+	 */
+	sync_fence_install(fence, priv.fence_fd);
+
 	return 0;
 
 fail_event:
 fail_copy_fd:
-	/* clean up sync_fence_install */
+	/* the fd was reserved but never installed */
 	put_unused_fd(priv.fence_fd);
 fail_fd:
 	/* clean up sync_fence_create */

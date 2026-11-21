@@ -3792,20 +3792,27 @@ static int msmfb_handle_buf_sync_ioctl(struct msm_fb_data_type *mfd,
 		ret = -ENOMEM;
 		goto buf_sync_err_1;
 	}
-	/* create fd */
+	/* create fd; install it only after the copy to user space worked */
 	mfd->cur_rel_fen_fd = get_unused_fd_flags(0);
-	sync_fence_install(mfd->cur_rel_fence, mfd->cur_rel_fen_fd);
+	if (mfd->cur_rel_fen_fd < 0) {
+		pr_err("%s: get_unused_fd_flags failed", __func__);
+		ret = mfd->cur_rel_fen_fd;
+		goto buf_sync_err_3;
+	}
 	ret = copy_to_user(buf_sync->rel_fen_fd,
 		&mfd->cur_rel_fen_fd, sizeof(int));
 	if (ret) {
 		pr_err("%s:copy_to_user failed", __func__);
+		ret = -EFAULT;
 		goto buf_sync_err_2;
 	}
+	sync_fence_install(mfd->cur_rel_fence, mfd->cur_rel_fen_fd);
 	mutex_unlock(&mfd->sync_mutex);
 	return ret;
 buf_sync_err_2:
-	sync_fence_put(mfd->cur_rel_fence);
 	put_unused_fd(mfd->cur_rel_fen_fd);
+buf_sync_err_3:
+	sync_fence_put(mfd->cur_rel_fence);
 	mfd->cur_rel_fence = NULL;
 	mfd->cur_rel_fen_fd = 0;
 buf_sync_err_1:
@@ -3819,7 +3826,7 @@ buf_sync_err_1:
 static int buf_fence_process(struct msm_fb_data_type *mfd,
 						struct mdp_buf_fence *buf_fence)
 {
-	int i, fence_cnt = 0, ret;
+	int i, fence_cnt = 0, ret = 0;
 	struct sync_fence *fence;
 
 	if ((buf_fence->acq_fen_fd_cnt == 0) ||
@@ -3860,6 +3867,14 @@ static int buf_fence_process(struct msm_fb_data_type *mfd,
 	}
 	/* create fd */
 	mfd->cur_rel_fen_fd = get_unused_fd_flags(0);
+	if (mfd->cur_rel_fen_fd < 0) {
+		pr_err("%s: get_unused_fd_flags failed", __func__);
+		ret = mfd->cur_rel_fen_fd;
+		sync_fence_put(mfd->cur_rel_fence);
+		mfd->cur_rel_fence = NULL;
+		mfd->cur_rel_fen_fd = 0;
+		goto buf_fence_err_1;
+	}
 	sync_fence_install(mfd->cur_rel_fence, mfd->cur_rel_fen_fd);
 	buf_fence->rel_fen_fd[0] = mfd->cur_rel_fen_fd;
 	/* Only one released fd for now, -1 indicates an end */
