@@ -207,6 +207,14 @@ static void msm_fb_set_bl_brightness(struct led_classdev *led_cdev,
 		bl_lvl = (2 * value * mfd->panel_info.bl_max + MAX_BACKLIGHT_BRIGHTNESS)		
 			/(2 * MAX_BACKLIGHT_BRIGHTNESS);
 #endif
+	/*
+	 * A non-zero android level must never become driver level 0 (= off):
+	 * with bl_max 16 the rounding above sends android 1..7 to 0, so the
+	 * lowest brightness settings (and the dim level) left the panel black
+	 * and nothing was restored after unblank (unset_bl_level 0).
+	 */
+	if (value > 0 && bl_lvl < mfd->panel_info.bl_min)
+		bl_lvl = mfd->panel_info.bl_min;
         down(&mfd->sem);
 	msm_fb_set_backlight(mfd, bl_lvl);
 	up(&mfd->sem);
