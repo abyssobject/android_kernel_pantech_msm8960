@@ -228,9 +228,18 @@ int kgsl_add_event(struct kgsl_device *device, u32 id, u32 ts,
 		context = kgsl_context_get(device, id);
 		if (context == NULL)
 			return -EINVAL;
-		/* Do not allow registering of event with invalid timestamp */
+		/*
+		 * Do not allow registering of event with invalid timestamp.
+		 * With KGSL_CONTEXT_USER_GENERATED_TS the timestamps come from
+		 * userspace, and the msm8960 (A225) GL driver asks for fences
+		 * and waits on a timestamp before the command batch carrying it
+		 * has been submitted (msm-3.4 accepted that). Rejecting it makes
+		 * eglSwapBuffers fail with EGL_BAD_SURFACE and breaks buffer
+		 * release ordering, so only check kernel generated timestamps.
+		 */
 		drawctxt = ADRENO_CONTEXT(context);
-		if (timestamp_cmp(ts, drawctxt->timestamp) > 0) {
+		if (!(context->flags & KGSL_CONTEXT_USER_GENERATED_TS) &&
+			timestamp_cmp(ts, drawctxt->timestamp) > 0) {
 			kgsl_context_put(context);
 			return -EINVAL;
 		}
