@@ -1116,7 +1116,8 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 		 * (mdp4_overlay_pipe_alloc FAILED on every 4-layer frame).
 		 */
 		mdp4_mixer_stage_down(pipe, 1);
-		mdp4_overlay_iommu_pipe_free(pipe->pipe_ndx, 1);
+		if (pipe->pipe_type != OVERLAY_TYPE_BF)
+			mdp4_overlay_iommu_pipe_free(pipe->pipe_ndx, 1);
 	}
 
 	undx =  vctrl->update_ndx;

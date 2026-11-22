@@ -1863,11 +1863,28 @@ void mdp4_mixer_stage_down(struct mdp4_overlay_pipe *pipe, int commit)
  * mixer1:  vg3: border color at register 0x1D004, 0x1D008
  * mixer2:  xxx: border color at register 0x8D004, 0x8D008
  */
+/* allocated base layer pipe of @mixer that is not staged yet, or NULL */
+static struct mdp4_overlay_pipe *mdp4_overlay_unstaged_base_pipe(int mixer)
+{
+	struct mdp4_overlay_pipe *pipe;
+	int i;
+
+	for (i = 0; i < OVERLAY_PIPE_MAX; i++) {
+		pipe = &ctrl->plist[i];
+		if (pipe->pipe_used && pipe->pipe_type != OVERLAY_TYPE_BF &&
+		    pipe->mixer_num == mixer &&
+		    pipe->mixer_stage == MDP4_MIXER_STAGE_BASE)
+			return pipe;
+	}
+	return NULL;
+}
+
 void mdp4_overlay_borderfill_stage_up(struct mdp4_overlay_pipe *pipe)
 {
 	struct mdp4_overlay_pipe *bspipe;
 	int ptype, pnum, pndx, mixer;
 	int format, alpha_enable, alpha;
+	struct mdp4_iommu_pipe_info iom;
 
 	if (pipe->pipe_type != OVERLAY_TYPE_BF)
 		return;
@@ -1878,16 +1895,39 @@ void mdp4_overlay_borderfill_stage_up(struct mdp4_overlay_pipe *pipe)
 		return;
 
 	bspipe = ctrl->stage[mixer][MDP4_MIXER_STAGE_BASE];
-
-	/*
-	 * bspipe is clone here
-	 * get real pipe
-	 */
-	bspipe = mdp4_overlay_ndx2pipe(bspipe->pipe_ndx);
+	if (bspipe) {
+		/*
+		 * bspipe is clone here
+		 * get real pipe
+		 */
+		bspipe = mdp4_overlay_ndx2pipe(bspipe->pipe_ndx);
+	} else {
+		/*
+		 * Right after panel on (e.g. the composer reopened the fb after
+		 * its last close) the base layer pipe is allocated but staged
+		 * only by the first pan display. Use it, so the borderfill
+		 * request is not lost (only three overlay pipes left) and
+		 * nothing dereferences the empty base stage.
+		 */
+		bspipe = mdp4_overlay_unstaged_base_pipe(mixer);
+	}
+	if (bspipe == NULL) {
+		pr_err("%s: no base layer at mixer=%d\n", __func__, mixer);
+		return;
+	}
 
 	/* save original base layer */
 	ctrl->baselayer[mixer] = bspipe;
 
+	/*
+	 * The borderfill pipe maps no buffers: keep its own (empty) iommu
+	 * info instead of a copy of the base layer's ion handles, which
+	 * stay owned by the base layer pipe. A copy made the next
+	 * mdp4_overlay_iommu_pipe_free() of the borderfill pipe free them
+	 * a second time (ion_unmap_iommu "was never mapped", BUG in
+	 * ion_free from mdp4_overlay_iommu_unmap_freelist).
+	 */
+	iom = pipe->iommu;
 	pipe->alpha = 0;	/* make sure bf pipe has alpha 0 */
 	ptype = pipe->pipe_type;
 	pnum = pipe->pipe_num;
@@ -1902,6 +1942,7 @@ void mdp4_overlay_borderfill_stage_up(struct mdp4_overlay_pipe *pipe)
 	pipe->src_format = format;
 	pipe->alpha_enable = alpha_enable;
 	pipe->alpha = alpha;
+	pipe->iommu = iom;
 
 	/* free original base layer pipe to be sued as normal pipe */
 	bspipe->pipe_used = 0;
@@ -2354,7 +2395,9 @@ void mdp4_overlay_pipe_free(struct mdp4_overlay_pipe *pipe)
 	ndx = pipe->pipe_ndx;
 	mixer = pipe->mixer_num;
 
-	mdp4_overlay_iommu_pipe_free(pipe->pipe_ndx, 0);
+	/* No need for borderfill pipe */
+	if (pipe->pipe_type != OVERLAY_TYPE_BF)
+		mdp4_overlay_iommu_pipe_free(pipe->pipe_ndx, 0);
 
 	iom = pipe->iommu;
 
