@@ -1088,7 +1088,20 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 		vctrl->clk_control = 0;
 		vctrl->clk_enabled = 0;
 		vctrl->expire_tick = 0;
+		/*
+		 * A kickoff still in flight never gets its overlay/DMA_P done
+		 * interrupt once the clocks are forced off. Settle it here:
+		 * otherwise dmap_koff != dmap_done stays and the first
+		 * pipe_commit after the next panel on waits for it forever
+		 * (commit work, composer and backlight work hung on ov_mutex /
+		 * dmap_comp, e.g. after the composer died mid-frame).
+		 */
+		vctrl->ov_done = vctrl->ov_koff;
+		vctrl->dmap_done = vctrl->dmap_koff;
 		spin_unlock_irqrestore(&vctrl->spin_lock, flags);
+		complete_all(&vctrl->ov_comp);
+		complete_all(&vctrl->dmap_comp);
+		mipi_dsi_cmd_mdp_busy_clear();
 		mipi_dsi_clk_cfg(0);
 		mdp_clk_ctrl(0);
 		pr_err("%s: Error, SET_CLK_OFF by force\n", __func__);
