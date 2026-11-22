@@ -2270,8 +2270,6 @@ static int mdp_off(struct platform_device *pdev)
 #ifdef CONFIG_PANTECH_LCD_SHARPNESS_CTRL
 	sharpness_count = 0;
 #endif
-	if (mdp_rev >= MDP_REV_41 && mfd->panel.type == MIPI_CMD_PANEL)
-		mdp_dsi_cmd_overlay_suspend(mfd);
 	pr_debug("%s:-\n", __func__);
 	return ret;
 }

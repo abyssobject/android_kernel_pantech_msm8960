@@ -1096,9 +1096,28 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 
 	/* sanity check, free pipes besides base layer */
 	mdp4_overlay_unset_mixer(pipe->mixer_num);
-	mdp4_mixer_stage_down(pipe, 1);
-	mdp4_overlay_pipe_free(pipe);
-	vctrl->base_pipe = NULL;
+	if (mfd->ref_cnt == 0) {
+		/* adb stop */
+		if (pipe->pipe_type == OVERLAY_TYPE_BF)
+			mdp4_overlay_borderfill_stage_down(pipe);
+
+		/* base pipe may change after borderfill_stage_down */
+		pipe = vctrl->base_pipe;
+		mdp4_mixer_stage_down(pipe, 1);
+		mdp4_overlay_pipe_free(pipe);
+		vctrl->base_pipe = NULL;
+	} else {
+		/*
+		 * system suspending: keep the base pipe. When it is the
+		 * borderfill pipe set up by the HW composer, freeing it here
+		 * left ctrl->baselayer[] stale and the next panel-on took RGB1
+		 * as base layer again, so after the first screen off only 3
+		 * of the 4 pipes the composer counts on were free
+		 * (mdp4_overlay_pipe_alloc FAILED on every 4-layer frame).
+		 */
+		mdp4_mixer_stage_down(pipe, 1);
+		mdp4_overlay_iommu_pipe_free(pipe->pipe_ndx, 1);
+	}
 
 	undx =  vctrl->update_ndx;
 	vp = &vctrl->vlist[undx];
