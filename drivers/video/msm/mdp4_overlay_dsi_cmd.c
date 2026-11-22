@@ -1094,6 +1094,17 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 		pr_err("%s: Error, SET_CLK_OFF by force\n", __func__);
 	}
 
+	/*
+	 * 3.4 driver: vsync is off while the panel is off. Without this a
+	 * client that dies with vsync enabled (composer crash -> last fb
+	 * close) left vsync_enabled set and the RDPTR interrupt unmasked,
+	 * so the next client's vsync enable was a no-op.
+	 */
+	if (vctrl->vsync_enabled) {
+		vsync_irq_disable(INTR_PRIMARY_RDPTR, MDP_PRIM_RDPTR_TERM);
+		vctrl->vsync_enabled = 0;
+	}
+
 	/* sanity check, free pipes besides base layer */
 	mdp4_overlay_unset_mixer(pipe->mixer_num);
 	if (mfd->ref_cnt == 0) {
