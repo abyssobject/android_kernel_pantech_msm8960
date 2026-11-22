@@ -3409,6 +3409,24 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 		return 0;
 	}
 
+	/*
+	 * A non-borderfill pipe at the base stage is the panel's base layer
+	 * (overlay requests always get stage >= MDP4_MIXER_STAGE0). The
+	 * composer's start-up cleanup unsets every pipe MSMFB_MIXER_INFO
+	 * reports, which after a composer restart includes the base pipe
+	 * re-allocated at panel on. Freeing it left the panel's base_pipe
+	 * dangling, the pipe was handed out again as an overlay, mixer0 had
+	 * no base stage and the first kickoff never completed (display,
+	 * composer and backlight hung until reboot). Keep it; report
+	 * success so the composer's cleanup goes on.
+	 */
+	if (pipe->mixer_stage == MDP4_MIXER_STAGE_BASE) {
+		pr_info("%s: keep base layer pipe ndx=%d of mixer %d\n",
+			__func__, pipe->pipe_ndx, pipe->mixer_num);
+		mutex_unlock(&mfd->dma->ov_mutex);
+		return 0;
+	}
+
 	if (pipe->mixer_num == MDP4_MIXER2)
 		ctrl->mixer2_played = 0;
 	else if (pipe->mixer_num == MDP4_MIXER1)
