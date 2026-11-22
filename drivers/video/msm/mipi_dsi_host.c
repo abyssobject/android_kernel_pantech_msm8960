@@ -1392,27 +1392,6 @@ static void mipi_dsi_wait_for_video_eng_busy(void)
 				sleep_us);
 }
 
-/*
- * ef52: the MDP clocks were forced off with a kickoff still in flight, so
- * no CMD_MDP_DONE interrupt will clear dsi_mdp_busy. Settle it, or every
- * later mipi_dsi_cmd_mdp_busy() caller (dcs command list, backlight)
- * waits for dsi_mdp_comp forever.
- */
-void mipi_dsi_cmd_mdp_busy_clear(void)
-{
-	unsigned long flags;
-
-	spin_lock_irqsave(&dsi_mdp_lock, flags);
-	if (dsi_mdp_busy == TRUE) {
-		dsi_ctrl_lock = FALSE;
-		dsi_mdp_busy = FALSE;
-		mipi_dsi_disable_irq_nosync(DSI_MDP_TERM);
-		complete_all(&dsi_mdp_comp);
-		pr_err("%s: cleared a lost mdp kickoff\n", __func__);
-	}
-	spin_unlock_irqrestore(&dsi_mdp_lock, flags);
-}
-
 void mipi_dsi_cmd_mdp_busy(void)
 {
 	unsigned long flags;
