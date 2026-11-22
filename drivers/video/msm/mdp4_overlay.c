@@ -1863,22 +1863,6 @@ void mdp4_mixer_stage_down(struct mdp4_overlay_pipe *pipe, int commit)
  * mixer1:  vg3: border color at register 0x1D004, 0x1D008
  * mixer2:  xxx: border color at register 0x8D004, 0x8D008
  */
-/* allocated base layer pipe of @mixer that is not staged yet, or NULL */
-static struct mdp4_overlay_pipe *mdp4_overlay_unstaged_base_pipe(int mixer)
-{
-	struct mdp4_overlay_pipe *pipe;
-	int i;
-
-	for (i = 0; i < OVERLAY_PIPE_MAX; i++) {
-		pipe = &ctrl->plist[i];
-		if (pipe->pipe_used && pipe->pipe_type != OVERLAY_TYPE_BF &&
-		    pipe->mixer_num == mixer &&
-		    pipe->mixer_stage == MDP4_MIXER_STAGE_BASE)
-			return pipe;
-	}
-	return NULL;
-}
-
 void mdp4_overlay_borderfill_stage_up(struct mdp4_overlay_pipe *pipe)
 {
 	struct mdp4_overlay_pipe *bspipe;
@@ -1895,24 +1879,19 @@ void mdp4_overlay_borderfill_stage_up(struct mdp4_overlay_pipe *pipe)
 		return;
 
 	bspipe = ctrl->stage[mixer][MDP4_MIXER_STAGE_BASE];
-	if (bspipe) {
-		/*
-		 * bspipe is clone here
-		 * get real pipe
-		 */
-		bspipe = mdp4_overlay_ndx2pipe(bspipe->pipe_ndx);
-	} else {
-		/*
-		 * Right after panel on (e.g. the composer reopened the fb after
-		 * its last close) the base layer pipe is allocated but staged
-		 * only by the first pan display. Use it, so the borderfill
-		 * request is not lost (only three overlay pipes left) and
-		 * nothing dereferences the empty base stage.
-		 */
-		bspipe = mdp4_overlay_unstaged_base_pipe(mixer);
-	}
 	if (bspipe == NULL) {
 		pr_err("%s: no base layer at mixer=%d\n", __func__, mixer);
+		return;
+	}
+
+	/*
+	 * bspipe is clone here
+	 * get real pipe
+	 */
+	bspipe = mdp4_overlay_ndx2pipe(bspipe->pipe_ndx);
+	if (bspipe == NULL) {
+		pr_err("%s: mdp4_overlay_ndx2pipe returned null pipe ndx\n",
+			__func__);
 		return;
 	}
 
