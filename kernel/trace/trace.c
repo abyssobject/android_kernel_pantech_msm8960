@@ -20,6 +20,7 @@
 #include <linux/notifier.h>
 #include <linux/irqflags.h>
 #include <linux/debugfs.h>
+#include <linux/kobject.h>
 #include <linux/pagemap.h>
 #include <linux/hardirq.h>
 #include <linux/linkage.h>
@@ -6285,6 +6286,8 @@ init_tracer_debugfs(struct trace_array *tr, struct dentry *d_tracer)
 
 }
 
+static struct kobject *tracing_mnt_kobj;
+
 static __init int tracer_init_debugfs(void)
 {
 	struct dentry *d_tracer;
@@ -6296,6 +6299,16 @@ static __init int tracer_init_debugfs(void)
 		return 0;
 
 	init_tracer_debugfs(&global_trace, d_tracer);
+
+	/*
+	 * Provide /sys/kernel/tracing as an empty mount point, as 4.1+
+	 * does for tracefs. This kernel has no tracefs, so userspace
+	 * bind-mounts the debugfs tracing directory there; Android
+	 * (wifi last-mile logging, init) only uses the tracefs path.
+	 */
+	tracing_mnt_kobj = kobject_create_and_add("tracing", kernel_kobj);
+	if (!tracing_mnt_kobj)
+		pr_warning("Could not create /sys/kernel/tracing mount point\n");
 
 	trace_create_file("tracing_cpumask", 0644, d_tracer,
 			&global_trace, &tracing_cpumask_fops);
