@@ -3299,6 +3299,49 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		binder_free_thread(proc, thread);
 		thread = NULL;
 		break;
+	case BINDER_GET_NODE_INFO_FOR_REF: {
+		/*
+		 * ef52: upstream 4.14 "binder: Add BINDER_GET_NODE_INFO_FOR_REF
+		 * ioctl". servicemanager polls it every 5 s for each service
+		 * with client callbacks (lazy services); without it the call
+		 * failed with -EINVAL twice per poll and lazy services were
+		 * never told they had no clients left.
+		 */
+		struct binder_node_info_for_ref info;
+		struct binder_ref *ref;
+
+		if (size != sizeof(info) ||
+		    copy_from_user(&info, ubuf, sizeof(info))) {
+			ret = -EFAULT;
+			goto err;
+		}
+		if (info.strong_count || info.weak_count || info.reserved1 ||
+		    info.reserved2 || info.reserved3) {
+			binder_user_error("%d BINDER_GET_NODE_INFO_FOR_REF: only handle may be non-zero.\n",
+					  proc->pid);
+			ret = -EINVAL;
+			goto err;
+		}
+		/* Only the context manager may use it. */
+		if (!context->binder_context_mgr_node ||
+		    context->binder_context_mgr_node->proc != proc) {
+			ret = -EPERM;
+			goto err;
+		}
+		ref = binder_get_ref(proc, info.handle, true);
+		if (!ref) {
+			ret = -EINVAL;
+			goto err;
+		}
+		info.strong_count = ref->node->local_strong_refs +
+			ref->node->internal_strong_refs;
+		info.weak_count = ref->node->local_weak_refs;
+		if (copy_to_user(ubuf, &info, sizeof(info))) {
+			ret = -EFAULT;
+			goto err;
+		}
+		break;
+	}
 	case BINDER_VERSION:
 		if (size != sizeof(struct binder_version)) {
 			ret = -EINVAL;
