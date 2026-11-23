@@ -748,6 +748,30 @@ static int cpufreq_add_dev_symlink(unsigned int cpu,
 	return ret;
 }
 
+/*
+ * Since Linux 4.6 every policy lives at /sys/devices/system/cpu/cpufreq/policyN
+ * (N = first CPU of the policy) and Android 16 userspace looks there
+ * (frameworks CpuInfoReader: "Failed to initialize CPU info reader"). On 3.10
+ * the policy directory is cpuN/cpufreq; publish it under the new name as a
+ * link so both layouts work.
+ */
+static void cpufreq_add_policy_link(struct cpufreq_policy *policy)
+{
+	char name[16];
+
+	snprintf(name, sizeof(name), "policy%u", policy->cpu);
+	if (sysfs_create_link(cpufreq_global_kobject, &policy->kobj, name))
+		pr_warn("cpufreq: cannot create %s link\n", name);
+}
+
+static void cpufreq_remove_policy_link(struct cpufreq_policy *policy)
+{
+	char name[16];
+
+	snprintf(name, sizeof(name), "policy%u", policy->cpu);
+	sysfs_remove_link(cpufreq_global_kobject, name);
+}
+
 static int cpufreq_add_dev_interface(unsigned int cpu,
 				     struct cpufreq_policy *policy,
 				     struct device *dev)
@@ -798,6 +822,8 @@ static int cpufreq_add_dev_interface(unsigned int cpu,
 	ret = cpufreq_add_dev_symlink(cpu, policy);
 	if (ret)
 		goto err_out_kobj_put;
+
+	cpufreq_add_policy_link(policy);
 
 	memcpy(&new_policy, policy, sizeof(struct cpufreq_policy));
 	/* assure that the starting sequence is run in __cpufreq_set_policy */
@@ -1100,9 +1126,11 @@ static int __cpufreq_remove_dev(struct device *dev, struct subsys_interface *sif
 			return -EINVAL;
 		}
 
+		cpufreq_remove_policy_link(data);
 		WARN_ON(lock_policy_rwsem_write(cpu));
 		update_policy_cpu(data, cpu_dev->id);
 		unlock_policy_rwsem_write(cpu);
+		cpufreq_add_policy_link(data);
 		pr_debug("%s: policy Kobject moved to cpu: %d from: %d\n",
 				__func__, cpu_dev->id, cpu);
 	}
@@ -1111,6 +1139,8 @@ static int __cpufreq_remove_dev(struct device *dev, struct subsys_interface *sif
 	if (cpus == 1) {
 		if (cpufreq_driver->target)
 			__cpufreq_governor(data, CPUFREQ_GOV_POLICY_EXIT);
+
+		cpufreq_remove_policy_link(data);
 
 		lock_policy_rwsem_read(cpu);
 		kobj = &data->kobj;
