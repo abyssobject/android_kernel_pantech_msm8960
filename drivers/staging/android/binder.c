@@ -166,7 +166,7 @@ enum binder_stat_types {
 };
 
 struct binder_stats {
-	int br[_IOC_NR(BR_FAILED_REPLY) + 1];
+	int br[_IOC_NR(BR_ONEWAY_SPAM_SUSPECT) + 1];
 	int bc[_IOC_NR(BC_REPLY_SG) + 1];
 	int obj_created[BINDER_STAT_COUNT];
 	int obj_deleted[BINDER_STAT_COUNT];
@@ -236,6 +236,7 @@ struct binder_work {
 	enum {
 		BINDER_WORK_TRANSACTION = 1,
 		BINDER_WORK_TRANSACTION_COMPLETE,
+		BINDER_WORK_TRANSACTION_ONEWAY_SPAM_SUSPECT,
 		BINDER_WORK_NODE,
 		BINDER_WORK_DEAD_BINDER,
 		BINDER_WORK_DEAD_BINDER_AND_CLEAR,
@@ -298,6 +299,8 @@ struct binder_buffer {
 	unsigned allow_user_free:1;
 	unsigned async_transaction:1;
 	unsigned debug_id:29;
+	unsigned oneway_spam_suspect:1;
+	pid_t pid;	/* tgid of the process that allocated it */
 
 	struct binder_transaction *transaction;
 
@@ -334,6 +337,8 @@ struct binder_proc {
 	struct rb_root free_buffers;
 	struct rb_root allocated_buffers;
 	size_t free_async_space;
+	bool oneway_spam_detected;
+	bool oneway_spam_detection_enabled;
 
 	struct page **pages;
 	size_t buffer_size;
@@ -671,6 +676,44 @@ err_no_vma:
 	return -ENOMEM;
 }
 
+/*
+ * ef52: upstream 5.13 "binder: tell userspace to dump current backtrace when
+ * detected oneway spamming". Called when the target's async space runs low:
+ * if one sender holds more than 50 async buffers or more than half of the
+ * async space (a quarter of the mapping), report it once (until the async
+ * space recovers) so that sender gets BR_ONEWAY_SPAM_SUSPECT.
+ */
+static bool debug_low_async_space_locked(struct binder_proc *proc, int pid)
+{
+	struct rb_node *n;
+	struct binder_buffer *buffer;
+	size_t total_alloc_size = 0;
+	size_t num_buffers = 0;
+
+	for (n = rb_first(&proc->allocated_buffers); n != NULL;
+	     n = rb_next(n)) {
+		buffer = rb_entry(n, struct binder_buffer, rb_node);
+		if (buffer->pid != pid)
+			continue;
+		if (!buffer->async_transaction)
+			continue;
+		total_alloc_size += binder_buffer_size(proc, buffer)
+			+ sizeof(struct binder_buffer);
+		num_buffers++;
+	}
+
+	if (num_buffers > 50 || total_alloc_size > proc->buffer_size / 4) {
+		binder_debug(BINDER_DEBUG_USER_ERROR,
+			     "%d: pid %d spamming oneway? %zd buffers allocated for a total size of %zd\n",
+			     proc->pid, pid, num_buffers, total_alloc_size);
+		if (!proc->oneway_spam_detected) {
+			proc->oneway_spam_detected = true;
+			return true;
+		}
+	}
+	return false;
+}
+
 static struct binder_buffer *binder_alloc_buf(struct binder_proc *proc,
 					      size_t data_size,
 					      size_t offsets_size,
@@ -774,11 +817,24 @@ static struct binder_buffer *binder_alloc_buf(struct binder_proc *proc,
 	buffer->offsets_size = offsets_size;
 	buffer->extra_buffers_size = extra_buffers_size;
 	buffer->async_transaction = is_async;
+	buffer->oneway_spam_suspect = 0;
+	buffer->pid = current->tgid;
 	if (is_async) {
 		proc->free_async_space -= size + sizeof(struct binder_buffer);
 		binder_debug(BINDER_DEBUG_BUFFER_ALLOC_ASYNC,
 			     "%d: binder_alloc_buf size %zd async free %zd\n",
 			      proc->pid, size, proc->free_async_space);
+		if (proc->free_async_space < proc->buffer_size / 10) {
+			/*
+			 * Start detecting spammers once we have less than 20%
+			 * of async space left (which is less than 10% of total
+			 * buffer size).
+			 */
+			buffer->oneway_spam_suspect =
+				debug_low_async_space_locked(proc, buffer->pid);
+		} else {
+			proc->oneway_spam_detected = false;
+		}
 	}
 
 	return buffer;
@@ -2228,7 +2284,10 @@ static void binder_transaction(struct binder_proc *proc,
 	}
 	t->work.type = BINDER_WORK_TRANSACTION;
 	list_add_tail(&t->work.entry, target_list);
-	tcomplete->type = BINDER_WORK_TRANSACTION_COMPLETE;
+	if (t->buffer->oneway_spam_suspect)
+		tcomplete->type = BINDER_WORK_TRANSACTION_ONEWAY_SPAM_SUSPECT;
+	else
+		tcomplete->type = BINDER_WORK_TRANSACTION_COMPLETE;
 	list_add_tail(&tcomplete->entry, &thread->todo);
 	if (target_wait) {
 		if (reply || !(t->flags & TF_ONE_WAY)) {
@@ -2794,8 +2853,13 @@ retry:
 		case BINDER_WORK_TRANSACTION: {
 			t = container_of(w, struct binder_transaction, work);
 		} break;
-		case BINDER_WORK_TRANSACTION_COMPLETE: {
-			cmd = BR_TRANSACTION_COMPLETE;
+		case BINDER_WORK_TRANSACTION_COMPLETE:
+		case BINDER_WORK_TRANSACTION_ONEWAY_SPAM_SUSPECT: {
+			if (proc->oneway_spam_detection_enabled &&
+			    w->type == BINDER_WORK_TRANSACTION_ONEWAY_SPAM_SUSPECT)
+				cmd = BR_ONEWAY_SPAM_SUSPECT;
+			else
+				cmd = BR_TRANSACTION_COMPLETE;
 			if (put_user(cmd, (uint32_t __user *)ptr))
 				return -EFAULT;
 			ptr += sizeof(uint32_t);
@@ -3034,7 +3098,8 @@ static void binder_release_work(struct list_head *list)
 				binder_stats_deleted(BINDER_STAT_TRANSACTION);
 			}
 		} break;
-		case BINDER_WORK_TRANSACTION_COMPLETE: {
+		case BINDER_WORK_TRANSACTION_COMPLETE:
+		case BINDER_WORK_TRANSACTION_ONEWAY_SPAM_SUSPECT: {
 			binder_debug(BINDER_DEBUG_DEAD_TRANSACTION,
 				"undelivered TRANSACTION_COMPLETE\n");
 			kfree(w);
@@ -3299,6 +3364,17 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		binder_free_thread(proc, thread);
 		thread = NULL;
 		break;
+	case BINDER_ENABLE_ONEWAY_SPAM_DETECTION: {
+		/* ef52: upstream 5.13, see debug_low_async_space_locked() */
+		uint32_t enable;
+
+		if (copy_from_user(&enable, ubuf, sizeof(enable))) {
+			ret = -EFAULT;
+			goto err;
+		}
+		proc->oneway_spam_detection_enabled = !!enable;
+		break;
+	}
 	case BINDER_GET_NODE_INFO_FOR_REF: {
 		/*
 		 * ef52: upstream 4.14 "binder: Add BINDER_GET_NODE_INFO_FOR_REF
@@ -3840,6 +3916,10 @@ static void print_binder_work(struct seq_file *m, const char *prefix,
 	case BINDER_WORK_TRANSACTION_COMPLETE:
 		seq_printf(m, "%stransaction complete\n", prefix);
 		break;
+	case BINDER_WORK_TRANSACTION_ONEWAY_SPAM_SUSPECT:
+		seq_printf(m, "%stransaction complete (oneway spam suspect)\n",
+			   prefix);
+		break;
 	case BINDER_WORK_NODE:
 		node = container_of(w, struct binder_node, work);
 		seq_printf(m, "%snode work %d: u%016llx c%016llx\n",
@@ -3986,7 +4066,9 @@ static const char * const binder_return_strings[] = {
 	"BR_FINISHED",
 	"BR_DEAD_BINDER",
 	"BR_CLEAR_DEATH_NOTIFICATION_DONE",
-	"BR_FAILED_REPLY"
+	"BR_FAILED_REPLY",
+	"BR_FROZEN_REPLY",
+	"BR_ONEWAY_SPAM_SUSPECT"
 };
 
 static const char * const binder_command_strings[] = {
