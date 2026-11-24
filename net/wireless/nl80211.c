@@ -1153,6 +1153,10 @@ nl80211_send_mgmt_stypes(struct sk_buff *msg,
 	return 0;
 }
 
+/* nl80211 uapi numbers of attributes this kernel's enum does not have yet */
+#define NL80211_ATTR_EXT_FEATURES_UAPI		217
+#define NL80211_ATTR_MAX_NUM_AKM_SUITES_UAPI	316
+
 static int nl80211_send_wiphy(struct cfg80211_registered_device *dev,
 			      struct sk_buff *msg, u32 portid, u32 seq,
 			      int flags, bool split, long *split_start,
@@ -1547,6 +1551,21 @@ static int nl80211_send_wiphy(struct cfg80211_registered_device *dev,
 			    sizeof(*dev->wiphy.vht_capa_mod_mask),
 			    dev->wiphy.vht_capa_mod_mask))
 			goto nla_put_failure;
+
+		/*
+		 * Attributes of newer kernels that Android's wificond reads for
+		 * every wiphy (and warns about when absent). Report what this
+		 * cfg80211 really offers: no extended features (4.3+), and one
+		 * AKM suite per connect, the value wificond assumes without it.
+		 */
+		{
+			u8 ext_features[1] = { 0 };
+
+			if (nla_put(msg, NL80211_ATTR_EXT_FEATURES_UAPI,
+				    sizeof(ext_features), ext_features) ||
+			    nla_put_u16(msg, NL80211_ATTR_MAX_NUM_AKM_SUITES_UAPI, 1))
+				goto nla_put_failure;
+		}
 
 		/* done */
 		*split_start = 0;
